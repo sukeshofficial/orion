@@ -1,15 +1,24 @@
 import * as React from "react"
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react"
 import { AuthLayout } from "@/components/auth/AuthLayout"
 import { AuthInput } from "@/components/auth/AuthInput"
 import { login, forgotPassword } from "@/services/authService"
 import { useAuth } from "@/context/AuthContext"
+import { normalizeRole, getDefaultDashboard, isRouteAllowedForRole } from "@/lib/roles"
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { loginUser } = useAuth()
+  const location = useLocation()
+  const { loginUser, isAuthenticated, normalizedRole, loading: authLoading } = useAuth()
+
+  // Redirect already authenticated users to their canonical dashboard
+  React.useEffect(() => {
+    if (!authLoading && isAuthenticated && normalizedRole) {
+      navigate(getDefaultDashboard(normalizedRole), { replace: true })
+    }
+  }, [authLoading, isAuthenticated, normalizedRole, navigate])
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -52,7 +61,18 @@ export default function LoginPage() {
       if (data?.token || data?.user) {
         loginUser(data.token, data.user)
       }
-      navigate("/dashboard")
+
+      const userRole = normalizeRole(data?.user?.role)
+      const defaultDashboard = getDefaultDashboard(userRole)
+      const fromLocation = location.state?.from
+
+      // Only restore requested destination if it belongs to user's allowed route prefix
+      if (fromLocation?.pathname && isRouteAllowedForRole(fromLocation.pathname, userRole)) {
+        const target = `${fromLocation.pathname}${fromLocation.search || ""}`
+        navigate(target, { replace: true })
+      } else {
+        navigate(defaultDashboard, { replace: true })
+      }
     } catch (err) {
       const msg =
         err?.response?.data?.message ||

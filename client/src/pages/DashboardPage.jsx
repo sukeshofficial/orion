@@ -1,7 +1,7 @@
 import * as React from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, useLocation } from "react-router-dom"
 import WorkspacePlaceholder from "@/components/layout/WorkspacePlaceholder"
-import { useRoleLayout } from "@/components/layout/AppLayout"
+import { useAuth } from "@/context/AuthContext"
 import {
   Users,
   FileText,
@@ -35,13 +35,25 @@ const TAB_MODULES = {
   support: { title: "Support Center", subtitle: "Customer assistance, ticketing, and platform documentation", icon: HelpCircle },
 }
 
-export default function DashboardPage({ currentRole, onSelectRole }) {
+export default function DashboardPage({ currentRole }) {
   const [searchParams] = useSearchParams()
+  const location = useLocation()
+  const { normalizedRole } = useAuth()
   const activeTab = searchParams.get("tab")
-  const roleContext = useRoleLayout()
 
-  const role = currentRole || roleContext?.currentRole || "admin"
-  const selectRole = onSelectRole || roleContext?.setRole
+  const role =
+    currentRole ||
+    (location.pathname.startsWith("/admin")
+      ? "admin"
+      : location.pathname.startsWith("/staff")
+      ? "staff"
+      : location.pathname.startsWith("/portal")
+      ? "customer"
+      : normalizedRole === "admin"
+      ? "admin"
+      : normalizedRole === "internal_user"
+      ? "staff"
+      : "customer")
 
   if (activeTab && TAB_MODULES[activeTab]) {
     const info = TAB_MODULES[activeTab]
@@ -81,10 +93,5 @@ export default function DashboardPage({ currentRole, onSelectRole }) {
     )
   }
 
-  return (
-    <WorkspacePlaceholder
-      currentRole={role}
-      onSelectRole={selectRole}
-    />
-  )
+  return <WorkspacePlaceholder currentRole={role} />
 }

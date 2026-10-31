@@ -1,16 +1,25 @@
 import * as React from "react"
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
+import { useNavigate, useLocation, Link } from "react-router-dom"
 import { Mail, User, Phone, Lock, ArrowRight, Loader2 } from "lucide-react"
 import { AuthLayout } from "@/components/auth/AuthLayout"
 import { AuthInput } from "@/components/auth/AuthInput"
 import { PasswordStrength } from "@/components/auth/PasswordStrength"
 import { register } from "@/services/authService"
 import { useAuth } from "@/context/AuthContext"
+import { isRouteAllowedForRole, getDefaultDashboard } from "@/lib/roles"
 
 export default function SignupPage() {
   const navigate = useNavigate()
-  const { loginUser } = useAuth()
+  const location = useLocation()
+  const { loginUser, isAuthenticated, normalizedRole, loading: authLoading } = useAuth()
+
+  // Redirect already authenticated users to their canonical dashboard
+  React.useEffect(() => {
+    if (!authLoading && isAuthenticated && normalizedRole) {
+      navigate(getDefaultDashboard(normalizedRole), { replace: true })
+    }
+  }, [authLoading, isAuthenticated, normalizedRole, navigate])
 
   const [formData, setFormData] = useState({
     email: "",
@@ -93,7 +102,15 @@ export default function SignupPage() {
       if (data?.token || data?.user) {
         loginUser(data.token, data.user)
       }
-      navigate("/dashboard")
+
+      // Public registration unconditionally creates a Customer (user) account
+      const fromLocation = location.state?.from
+      if (fromLocation?.pathname && isRouteAllowedForRole(fromLocation.pathname, "user")) {
+        const target = `${fromLocation.pathname}${fromLocation.search || ""}`
+        navigate(target, { replace: true })
+      } else {
+        navigate("/portal/dashboard", { replace: true })
+      }
     } catch (err) {
       const msg =
         err?.response?.data?.message ||

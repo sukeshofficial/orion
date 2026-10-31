@@ -29,14 +29,12 @@ import OrionBrand from "./OrionBrand"
  * - showSearch: boolean (defaults true for admin & staff)
  * - navigationItems: Array<{ name: string, href: string, icon?: any }>
  * - onToggleSidebar: () => void (for mobile sidebar drawer in admin/staff)
- * - onRoleChange: (role: string) => void (for role preview switching)
  */
 export default function Navbar({
   userRole = "customer",
   showSearch,
   navigationItems,
   onToggleSidebar,
-  onRoleChange,
 }) {
   const { user, logoutUser } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -86,14 +84,22 @@ export default function Navbar({
   const truncatedHandle =
     displayName.length > 15 ? `${displayName.slice(0, 14)}…` : displayName
 
+  // Dynamic route prefix based on role
+  const rolePrefix =
+    userRole === "admin"
+      ? "/admin"
+      : userRole === "staff" || userRole === "internal_user"
+      ? "/staff"
+      : "/portal"
+
   // Customer navigation items
   const defaultNavItems =
-    userRole === "customer"
+    userRole === "customer" || userRole === "user"
       ? [
-          { name: "Dashboard", href: "/dashboard" },
-          { name: "Subscriptions", href: "/dashboard?tab=subscriptions" },
-          { name: "Invoices", href: "/dashboard?tab=invoices" },
-          { name: "Support", href: "/dashboard?tab=support" },
+          { name: "Dashboard", href: "/portal/dashboard" },
+          { name: "Subscriptions", href: "/portal/dashboard?tab=subscriptions" },
+          { name: "Invoices", href: "/portal/dashboard?tab=invoices" },
+          { name: "Support", href: "/portal/dashboard?tab=support" },
         ]
       : []
 
@@ -102,14 +108,16 @@ export default function Navbar({
   const currentTab = new URLSearchParams(location.search).get("tab")
 
   const isItemActive = (href) => {
-    if (href === "/dashboard") {
-      return location.pathname === "/dashboard" && !currentTab
+    const [itemPath, itemQuery] = href.split("?")
+    const itemTab = new URLSearchParams(itemQuery || "").get("tab")
+    if (location.pathname === itemPath) {
+      if (!itemTab && !currentTab) return true
+      return currentTab === itemTab
     }
-    const itemTab = new URLSearchParams(href.split("?")[1] || "").get("tab")
-    return currentTab === itemTab
+    return false
   }
 
-  const isProfileActive = location.pathname === "/profile"
+  const isProfileActive = location.pathname.endsWith("/profile")
 
   // Outside click & Escape handling
   useEffect(() => {
@@ -162,9 +170,10 @@ export default function Navbar({
     try {
       setLoggingOut(true)
       await logoutUser()
-      navigate("/login")
+      navigate("/login", { replace: true })
     } catch (error) {
       console.error("Logout error:", error)
+      navigate("/login", { replace: true })
     } finally {
       setLoggingOut(false)
     }
@@ -172,20 +181,20 @@ export default function Navbar({
 
   // Quick navigation modules
   const searchableModules = [
-    { name: "Dashboard", category: "Overview", href: "/dashboard" },
-    { name: "Customers", category: "Sales", href: "/dashboard?tab=customers" },
-    { name: "Quotations", category: "Sales", href: "/dashboard?tab=quotations" },
-    { name: "Subscriptions", category: "Subscriptions", href: "/dashboard?tab=subscriptions" },
-    { name: "Plans", category: "Subscriptions", href: "/dashboard?tab=plans" },
-    { name: "Products", category: "Catalog", href: "/dashboard?tab=products" },
-    { name: "Taxes", category: "Catalog", href: "/dashboard?tab=taxes" },
-    { name: "Invoices", category: "Billing", href: "/dashboard?tab=invoices" },
-    { name: "Payments", category: "Billing", href: "/dashboard?tab=payments" },
-    { name: "Discounts", category: "Billing", href: "/dashboard?tab=discounts" },
-    { name: "Staff Administration", category: "Administration", href: "/dashboard?tab=staff" },
-    { name: "Settings", category: "Administration", href: "/dashboard?tab=settings" },
-    { name: "Financial Analytics", category: "Reports", href: "/dashboard?tab=analytics" },
-    { name: "My Profile", category: "Account", href: "/profile" },
+    { name: "Dashboard", category: "Overview", href: `${rolePrefix}/dashboard` },
+    { name: "Customers", category: "Sales", href: `${rolePrefix}/dashboard?tab=customers` },
+    { name: "Quotations", category: "Sales", href: `${rolePrefix}/dashboard?tab=quotations` },
+    { name: "Subscriptions", category: "Subscriptions", href: `${rolePrefix}/dashboard?tab=subscriptions` },
+    { name: "Plans", category: "Subscriptions", href: `${rolePrefix}/dashboard?tab=plans` },
+    { name: "Products", category: "Catalog", href: `${rolePrefix}/dashboard?tab=products` },
+    { name: "Taxes", category: "Catalog", href: `${rolePrefix}/dashboard?tab=taxes` },
+    { name: "Invoices", category: "Billing", href: `${rolePrefix}/dashboard?tab=invoices` },
+    { name: "Payments", category: "Billing", href: `${rolePrefix}/dashboard?tab=payments` },
+    { name: "Discounts", category: "Billing", href: `${rolePrefix}/dashboard?tab=discounts` },
+    { name: "Staff Administration", category: "Administration", href: `${rolePrefix}/dashboard?tab=staff` },
+    { name: "Settings", category: "Administration", href: `${rolePrefix}/dashboard?tab=settings` },
+    { name: "Financial Analytics", category: "Reports", href: `${rolePrefix}/dashboard?tab=analytics` },
+    { name: "My Profile", category: "Account", href: `${rolePrefix}/profile` },
   ]
 
   const filteredSearch = searchQuery.trim()
@@ -234,7 +243,7 @@ export default function Navbar({
                 >
                   <span className="text-muted-foreground/60 mr-1.5">&lt;</span>
                   <Link
-                    to="/dashboard"
+                    to={`${rolePrefix}/dashboard`}
                     className="hover:text-foreground transition-colors"
                   >
                     Overview
@@ -441,63 +450,10 @@ export default function Navbar({
                       </div>
                     </div>
 
-                    {/* Role layout preview selector (if onRoleChange provided) */}
-                    {onRoleChange && (
-                      <div className="px-2 py-1.5 mb-1 border-b border-border/60 dark:border-white/10">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                          Role Layout View
-                        </p>
-                        <div className="grid grid-cols-3 gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRoleChange("admin")
-                              setIsDropdownOpen(false)
-                            }}
-                            className={`px-1.5 py-1 rounded text-[11px] font-medium transition ${
-                              userRole === "admin"
-                                ? "bg-[#2563EB] text-white"
-                                : "hover:bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            Admin
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRoleChange("staff")
-                              setIsDropdownOpen(false)
-                            }}
-                            className={`px-1.5 py-1 rounded text-[11px] font-medium transition ${
-                              userRole === "staff"
-                                ? "bg-[#2563EB] text-white"
-                                : "hover:bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            Staff
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onRoleChange("customer")
-                              setIsDropdownOpen(false)
-                            }}
-                            className={`px-1.5 py-1 rounded text-[11px] font-medium transition ${
-                              userRole === "customer"
-                                ? "bg-[#2563EB] text-white"
-                                : "hover:bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            Customer
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Menu links */}
                     <div className="space-y-0.5">
                       <Link
-                        to="/profile"
+                        to={`${rolePrefix}/profile`}
                         onClick={() => setIsDropdownOpen(false)}
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition ${
                           isProfileActive
