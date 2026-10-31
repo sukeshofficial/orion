@@ -1,5 +1,4 @@
 import * as authService from "../services/auth.service.js";
-import { authorizeOwnership } from "../services/ownership.service.js";
 import { validateImageFile } from "../services/storage.service.js";
 
 // Cookie options for secure session token delivery
@@ -398,18 +397,12 @@ export const staffDashboardOverview = async (req, res) => {
 };
 
 /**
- * Customer ownership test resource endpoint for backward compatibility
+ * Customer ownership test resource endpoint.
+ * Ownership authorization is handled upstream by requireOwnership middleware.
  */
 export const testCustomerResource = async (req, res) => {
   try {
     const { ownerId } = req.params;
-
-    authorizeOwnership({
-      resourceOwnerId: ownerId,
-      authenticatedUser: req.user,
-      allowAdmin: true,
-      allowStaff: true,
-    });
 
     return res.status(200).json({
       success: true,

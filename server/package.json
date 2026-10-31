@@ -14,15 +14,17 @@
   },
   "devDependencies": {
     "eslint": "^10.13.0",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.1"
   },
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js",
-    "seed:staff": "node scripts/create-staff.js",
-    "seed:admin": "node scripts/create-admin.js",
+    "start":        "node src/index.js",
+    "dev":          "nodemon src/index.js",
+    "test":         "node --test tests/rbac.test.js",
+    "seed:staff":   "node scripts/create-staff.js",
+    "seed:admin":   "node scripts/create-admin.js",
     "seed:internal": "node scripts/create-internal-user.js",
-    "lint": "eslint ."
+    "lint":         "eslint ."
   }
 }

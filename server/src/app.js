@@ -17,29 +17,42 @@ const app = express();
 app.use(helmet());
 app.use(cookieParser());
 
-// Normalize allowed origins by trimming trailing slashes and splitting comma-separated URLs
+// Build the set of explicitly allowed origins from the comma-separated CLIENT_URL env var.
+// Each value is trimmed and has trailing slashes stripped for consistent matching.
 const allowedOrigins = new Set(
   (process.env.CLIENT_URL || "http://localhost:5173")
     .split(",")
-    .map((origin) => origin.trim().replace(/[/]+$/, ""))
+    .map((o) => o.trim().replace(/\/+$/, ""))
     .filter(Boolean)
 );
+
+/**
+ * Determines whether a request origin should be allowed.
+ * Rules (evaluated in order):
+ *   1. No origin header → allow (server-to-server, curl, mobile apps)
+ *   2. CLIENT_URL contains "*"  → allow all
+ *   3. Origin is explicitly listed in CLIENT_URL → allow
+ *   4. Origin matches *.vercel.app → allow (covers all Vercel preview deployments)
+ *   5. NODE_ENV is not "production" → allow (local development)
+ *   6. Otherwise → reject with CORS error
+ */
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  const normalized = origin.replace(/\/+$/, "");
+  if (allowedOrigins.has("*")) return true;
+  if (allowedOrigins.has(normalized)) return true;
+  // Allow any Vercel preview / production deployment URL automatically
+  if (/^https:\/\/[a-zA-Z0-9-]+\.vercel\.app$/.test(normalized)) return true;
+  if (process.env.NODE_ENV !== "production") return true;
+  return false;
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
-      if (!origin) return callback(null, true);
-
-      const normalizedOrigin = origin.replace(/[/]+$/, "");
-      if (
-        allowedOrigins.has("*") ||
-        allowedOrigins.has(normalizedOrigin) ||
-        process.env.NODE_ENV !== "production"
-      ) {
+      if (isAllowedOrigin(origin)) {
         return callback(null, true);
       }
-
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     },
     credentials: true,

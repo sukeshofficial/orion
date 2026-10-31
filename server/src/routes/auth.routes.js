@@ -21,12 +21,15 @@ import {
 import {
   authenticate,
   requireRole,
+  requireOwnership,
 } from "../middleware/auth.middleware.js";
 import { parseMultipartImage } from "../middleware/upload.middleware.js";
 
 const router = Router();
 
-// Rate limiter for authentication endpoints: max 50 requests per 15 mins
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+
+// 50 requests per 15 minutes for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
@@ -38,7 +41,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate limiter for email verification requests: max 10 requests per 15 mins
+// 10 requests per 15 minutes for email verification endpoints
 const verificationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -50,24 +53,24 @@ const verificationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Public authentication routes
-router.post("/register", authLimiter, register);
-router.post("/login", authLimiter, login);
-router.post("/logout", authenticate, logout);
+// ── Public authentication routes ──────────────────────────────────────────────
+router.post("/register",        authLimiter, register);
+router.post("/login",           authLimiter, login);
+router.post("/logout",          authenticate, logout);
 router.post("/forgot-password", authLimiter, forgotPassword);
-router.post("/reset-password", authLimiter, resetPassword);
+router.post("/reset-password",  authLimiter, resetPassword);
 router.get("/verify-reset-token", verifyResetToken);
 
-// Email verification endpoints
+// ── Email verification ────────────────────────────────────────────────────────
 router.post("/email-verification/request", authenticate, verificationLimiter, requestEmailVerification);
 router.post("/email-verification/confirm", authLimiter, confirmEmailVerification);
 
-// Development visual preview for email template
+// ── Development email template preview ───────────────────────────────────────
 if (process.env.NODE_ENV !== "production") {
   router.get("/preview/password-reset", async (req, res) => {
     const { generatePasswordResetTemplate } = await import("../services/email.service.js");
     const sampleHtml = generatePasswordResetTemplate({
-      name: req.query.name || "Alex Morgan",
+      name:    req.query.name  || "Alex Morgan",
       resetUrl: `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password?token=sample_demo_token_1234567890abcdef&email=${encodeURIComponent(
         req.query.email || "alex.morgan@example.com"
       )}`,
@@ -79,26 +82,39 @@ if (process.env.NODE_ENV !== "production") {
   });
 }
 
-// Authenticated current-user profile routes
-router.get("/me", authenticate, getMe);
-router.patch("/me", authenticate, updateMe);
+// ── Authenticated current-user profile routes ─────────────────────────────────
+router.get("/me",           authenticate, getMe);
+router.patch("/me",         authenticate, updateMe);
 router.patch("/me/password", authenticate, changePassword);
 
-// Profile picture upload, select, and removal (Standard and frontend compatibility endpoints)
-router.post("/me/profile-picture", authenticate, parseMultipartImage("profilePic"), uploadProfilePicture);
-router.patch("/me/profile-picture/select", authenticate, selectProfilePicture);
-router.delete("/me/profile-picture", authenticate, deleteProfilePicture);
+// Profile picture upload, selection, and removal
+router.post(  "/me/profile-picture",         authenticate, parseMultipartImage("profilePic"), uploadProfilePicture);
+router.patch( "/me/profile-picture/select",  authenticate, selectProfilePicture);
+router.delete("/me/profile-picture",         authenticate, deleteProfilePicture);
 
-// Frontend compatibility aliases for profile picture upload & delete
-router.post("/profilePic", authenticate, parseMultipartImage("profilePic"), uploadProfilePicture);
-router.post("/profile-pic", authenticate, parseMultipartImage("profilePic"), uploadProfilePicture);
-router.patch("/profilePic/select", authenticate, selectProfilePicture);
-router.delete("/profilePic", authenticate, deleteProfilePicture);
+// Frontend compatibility aliases
+router.post(  "/profilePic",         authenticate, parseMultipartImage("profilePic"), uploadProfilePicture);
+router.post(  "/profile-pic",        authenticate, parseMultipartImage("profilePic"), uploadProfilePicture);
+router.patch( "/profilePic/select",  authenticate, selectProfilePicture);
+router.delete("/profilePic",         authenticate, deleteProfilePicture);
 
-// Legacy internal staff management route (Protected by authentication + requireRole)
-router.get("/staff/dashboard", authenticate, requireRole("internal_user", "internal_staff"), staffDashboardOverview);
+// ── Staff dashboard ───────────────────────────────────────────────────────────
+// Requires authentication + internal_user (or internal_staff alias) role
+router.get(
+  "/staff/dashboard",
+  authenticate,
+  requireRole("internal_user", "internal_staff"),
+  staffDashboardOverview
+);
 
-// Customer-isolated resource demonstration route (Protected by authentication + ownership check)
-router.get("/customer-resource/:ownerId", authenticate, testCustomerResource);
+// ── Customer-owned resource demo ──────────────────────────────────────────────
+// Demonstrates ownership enforcement: a customer can only access their own resource.
+// Admin and internal staff bypass the ownership check.
+router.get(
+  "/customer-resource/:ownerId",
+  authenticate,
+  requireOwnership({ ownerIdParam: "ownerId", allowAdmin: true, allowStaff: true }),
+  testCustomerResource
+);
 
 export default router;

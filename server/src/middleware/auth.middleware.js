@@ -3,17 +3,28 @@ import { verifyToken } from "../utils/token.utils.js";
 import { normalizeRole, matchesRole, USER_ROLES } from "../config/roles.js";
 import { resolveUserPermissions, hasPermission } from "../config/permissions.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// authenticate
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Authentication Middleware:
- * Extracts JWT from HTTP-only cookie or Authorization header,
- * verifies signature, expiration, and tokenVersion against database.
- * Attaches trusted, latest user from MongoDB to req.user.
+ * Authentication Middleware
+ *
+ * Extracts a JWT from an HTTP-only cookie (`token`) or the `Authorization: Bearer`
+ * header, verifies its signature and expiration, and validates the embedded
+ * tokenVersion against the database record to detect invalidated sessions.
+ *
+ * On success:
+ *   - req.user                  → fresh Mongoose User document (never the JWT payload)
+ *   - req.userEffectivePermissions → Set<string> of resolved permissions
+ *
+ * Never trust role/permission values from the request body.
+ * All authorization decisions are made from req.user populated here.
  */
 export const authenticate = async (req, res, next) => {
   try {
+    // 1. Extract token from cookie or Authorization header
     let token = null;
-
-    // Check HTTP-only cookie first
     if (req.cookies?.token) {
       token = req.cookies.token;
     } else if (req.headers.authorization?.startsWith("Bearer ")) {
@@ -27,6 +38,7 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
+    // 2. Verify JWT signature / expiration
     let decoded;
     try {
       decoded = verifyToken(token);
@@ -43,6 +55,7 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
+    // 3. Load fresh user from the database — never trust the JWT payload for authorization
     const user = await User.findById(decoded.id);
     if (!user) {
       return res.status(401).json({
@@ -51,10 +64,9 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    // Check tokenVersion for session invalidation (after password change/reset)
-    // Only invalidate if token has a defined tokenVersion and it's older than database version
-    const tokenVersion = typeof decoded.tokenVersion === "number" ? decoded.tokenVersion : 0;
-    const dbTokenVersion = typeof user.tokenVersion === "number" ? user.tokenVersion : 0;
+    // 4. Validate tokenVersion to detect invalidated sessions
+    const tokenVersion   = typeof decoded.tokenVersion === "number" ? decoded.tokenVersion : 0;
+    const dbTokenVersion = typeof user.tokenVersion    === "number" ? user.tokenVersion    : 0;
     if (tokenVersion < dbTokenVersion) {
       return res.status(401).json({
         success: false,
@@ -62,6 +74,7 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
+    // 5. Reject disabled accounts
     if (user.status === USER_STATUS.DISABLED) {
       return res.status(403).json({
         success: false,
@@ -69,7 +82,7 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    // Attach trusted identity and permissions to request object
+    // 6. Attach trusted identity to request
     req.user = user;
     req.userEffectivePermissions = resolveUserPermissions(user);
     next();
@@ -82,11 +95,24 @@ export const authenticate = async (req, res, next) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// requireRole  /  authorizeRole  (aliases)
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Role Authorization Middleware:
- * Restricts access to one or more specified roles.
- * Canonical roles (admin, internal_user, user) and legacy aliases (internal_staff, customer) are supported.
- * Rejects with 403 Forbidden if user lacks permitted role.
+ * Role Authorization Middleware Factory
+ *
+ * Restricts access to one or more roles.  Both canonical names and legacy
+ * aliases are supported (e.g. "internal_staff" ≡ "internal_user").
+ *
+ * Usage:
+ *   router.get("/admin-area", authenticate, requireRole("admin"), handler);
+ *   router.get("/staff-area", authenticate, requireRole("admin", "internal_user"), handler);
+ *
+ * Returns 401 when no authenticated user is attached.
+ * Returns 403 when the user's role does not match any allowed role.
+ *
+ * @param {...string} allowedRoles - canonical or legacy role names
  */
 export const requireRole = (...allowedRoles) => {
   return (req, res, next) => {
@@ -97,9 +123,9 @@ export const requireRole = (...allowedRoles) => {
       });
     }
 
-    // Admin has access to administrative routes or general routes where admin is allowed
-    const userRole = req.user.role;
-    const hasRole = allowedRoles.some((allowedRole) => matchesRole(userRole, allowedRole));
+    const hasRole = allowedRoles.some((allowed) =>
+      matchesRole(req.user.role, allowed)
+    );
 
     if (!hasRole) {
       return res.status(403).json({
@@ -112,11 +138,26 @@ export const requireRole = (...allowedRoles) => {
   };
 };
 
+/** Alias matching the spec's authorizeRole name. */
+export const authorizeRole = requireRole;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// requirePermission  /  authorizePermission  (aliases)
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Permission Authorization Middleware:
- * Requires one or multiple permissions.
- * Admins possess wildcard ('*') access.
- * Denies by default for unassigned permissions or unknown roles.
+ * Permission Authorization Middleware Factory
+ *
+ * Requires that the authenticated user holds ALL of the listed permissions.
+ * Admins possess the wildcard ("*") and are always granted access.
+ *
+ * Usage:
+ *   router.get("/customers", authenticate, requirePermission(PERMISSIONS.CUSTOMER_READ), handler);
+ *
+ * Returns 401 when no authenticated user is attached.
+ * Returns 403 when any required permission is missing.
+ *
+ * @param {...string} requiredPermissions
  */
 export const requirePermission = (...requiredPermissions) => {
   return (req, res, next) => {
@@ -127,17 +168,16 @@ export const requirePermission = (...requiredPermissions) => {
       });
     }
 
-    const effectivePermissions =
+    const effective =
       req.userEffectivePermissions || resolveUserPermissions(req.user);
 
-    // If user is admin (wildcard), allow immediately
-    if (effectivePermissions.has("*")) {
+    // Wildcard: admin has access to everything
+    if (effective.has("*")) {
       return next();
     }
 
-    // Check if user has all required permissions
     const hasAll = requiredPermissions.every((perm) =>
-      hasPermission(effectivePermissions, perm)
+      hasPermission(effective, perm)
     );
 
     if (!hasAll) {
@@ -151,10 +191,21 @@ export const requirePermission = (...requiredPermissions) => {
   };
 };
 
+/** Alias matching the spec's authorizePermission name. */
+export const authorizePermission = requirePermission;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// requireVerifiedEmail
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Verified Email Authorization Middleware:
- * Reusable middleware ensuring the authenticated user has verified their email address.
- * Rejects with 403 Forbidden if emailVerified is false.
+ * Email Verification Guard
+ *
+ * Ensures the authenticated user has confirmed their email address.
+ * Must be placed after `authenticate` in the middleware chain.
+ *
+ * Returns 401 when no user is attached.
+ * Returns 403 with code EMAIL_NOT_VERIFIED when the email is unverified.
  */
 export const requireVerifiedEmail = (req, res, next) => {
   if (!req.user) {
@@ -173,4 +224,107 @@ export const requireVerifiedEmail = (req, res, next) => {
   }
 
   next();
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// requireOwnership  (reusable ownership guard middleware)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ownership Authorization Middleware Factory
+ *
+ * Prevents IDOR (Insecure Direct Object Reference) by verifying that the
+ * requesting user owns the resource they are trying to access.
+ *
+ * Rules:
+ *   - Admin: always allowed (configurable via allowAdmin)
+ *   - Internal staff: allowed by default (configurable via allowStaff)
+ *   - Staff with requiredPermission: allowed when they possess the permission
+ *   - Customer: allowed only when their ID matches the resource owner ID
+ *
+ * Usage:
+ *   router.get(
+ *     "/invoices/:customerId",
+ *     authenticate,
+ *     requireOwnership({ ownerIdParam: "customerId" }),
+ *     handler
+ *   );
+ *
+ * @param {object} options
+ * @param {string}  [options.ownerIdParam="ownerId"]  - req.params key holding the owner ID
+ * @param {boolean} [options.allowAdmin=true]         - whether admin bypasses ownership
+ * @param {boolean} [options.allowStaff=true]         - whether internal staff bypasses ownership
+ * @param {string}  [options.requiredPermission=null] - staff-level permission granting bypass
+ */
+export const requireOwnership = ({
+  ownerIdParam       = "ownerId",
+  allowAdmin         = true,
+  allowStaff         = true,
+  requiredPermission = null,
+} = {}) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required for resource access.",
+      });
+    }
+
+    const canonicalRole = normalizeRole(req.user.role);
+
+    // 1. Admin bypass
+    if (allowAdmin && canonicalRole === USER_ROLES.ADMIN) {
+      return next();
+    }
+
+    // 2. Internal staff bypass
+    if (
+      allowStaff &&
+      (canonicalRole === USER_ROLES.INTERNAL_USER ||
+        req.user.role === "internal_staff")
+    ) {
+      // Staff must have the required permission (if specified)
+      if (requiredPermission) {
+        const effective =
+          req.userEffectivePermissions || resolveUserPermissions(req.user);
+        if (!hasPermission(effective, requiredPermission)) {
+          return res.status(403).json({
+            success: false,
+            message: `Forbidden: Lacking required permission: ${requiredPermission}`,
+          });
+        }
+      }
+      return next();
+    }
+
+    // 3. Permission-based bypass (for staff with specific permission when allowStaff=false)
+    if (requiredPermission) {
+      const effective =
+        req.userEffectivePermissions || resolveUserPermissions(req.user);
+      if (hasPermission(effective, requiredPermission)) {
+        return next();
+      }
+    }
+
+    // 4. Strict owner match — the resource owner ID must equal the authenticated user ID
+    const resourceOwnerId = req.params[ownerIdParam];
+    const authenticatedUserId = (req.user._id || req.user.id)?.toString?.();
+
+    const normalizedOwnerId = resourceOwnerId
+      ? String(resourceOwnerId).trim()
+      : "";
+
+    if (
+      !normalizedOwnerId ||
+      !authenticatedUserId ||
+      normalizedOwnerId !== authenticatedUserId
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: You do not have permission to access this resource.",
+      });
+    }
+
+    next();
+  };
 };

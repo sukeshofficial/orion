@@ -1,10 +1,18 @@
-import { requireRole } from "./auth.middleware.js";
-
 /**
- * Dedicated Role Authorization Middleware
+ * Role Authorization Middleware — Re-export Module
+ *
+ * Import requireRole or its spec alias authorizeRole from here
+ * to keep route files concise.
+ *
  * Usage:
- *   router.get('/admin-area', requireRole('admin'), handler);
- *   router.get('/staff-area', requireRole('admin', 'internal_user'), handler);
+ *   import { requireRole } from "../middleware/role.middleware.js";
+ *   router.get("/admin-area", authenticate, requireRole("admin"), handler);
+ *   router.get("/staff-area", authenticate, requireRole("admin", "internal_user"), handler);
  */
-export { requireRole };
+import {
+  requireRole,
+  authorizeRole,
+} from "./auth.middleware.js";
+
+export { requireRole, authorizeRole };
 export default requireRole;
