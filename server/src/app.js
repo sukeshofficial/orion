@@ -11,6 +11,9 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
+import productRoutes from "./routes/product.routes.js";
+import taxRoutes from "./routes/tax.routes.js";
+import planRoutes from "./routes/plan.routes.js";
 
 const app = express();
 
@@ -87,6 +90,9 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/customers", customerRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/taxes", taxRoutes);
+app.use("/api/v1/plans", planRoutes);
 
 
 

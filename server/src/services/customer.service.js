@@ -221,3 +221,114 @@ export const updateCustomer = async (id, updates = {}) => {
 
   return customer.toSafeObject();
 };
+
+/**
+ * Get current customer profile for authenticated user.
+ * If customer profile doesn't exist yet, lazily initializes a Customer profile.
+ */
+export const getCustomerMe = async (authenticatedUser) => {
+  if (!authenticatedUser) {
+    const error = new Error("Authentication required");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const userId = authenticatedUser._id || authenticatedUser.id;
+  let customer = await Customer.findOne({ userId }).populate("userId");
+
+  if (!customer) {
+    // Lazily create customer profile record for this user if they don't have one yet
+    const customerNumber = await generateCustomerNumber();
+    customer = new Customer({
+      userId,
+      customerNumber,
+      companyName: "",
+      phone: authenticatedUser.phone || "",
+      billingAddress: {},
+      taxIdentificationNumber: "",
+      isActive: true,
+    });
+    await customer.save();
+    await customer.populate("userId");
+  }
+
+  return customer.toSafeObject();
+};
+
+/**
+ * Update current customer profile for authenticated user.
+ * Permitted update fields: name, phone, companyName, billingAddress, taxIdentificationNumber.
+ * Strips role, permissions, status, email, password, tokenVersion, customerNumber, isActive, etc.
+ */
+export const updateCustomerMe = async (authenticatedUser, updates = {}) => {
+  if (!authenticatedUser) {
+    const error = new Error("Authentication required");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const userId = authenticatedUser._id || authenticatedUser.id;
+  let customer = await Customer.findOne({ userId });
+
+  if (!customer) {
+    const customerNumber = await generateCustomerNumber();
+    customer = new Customer({
+      userId,
+      customerNumber,
+      isActive: true,
+    });
+  }
+
+  // Update User document fields (name, phone) if provided
+  const user = await User.findById(userId);
+  if (!user) {
+    const error = new Error("User account not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (typeof updates.name === "string" && updates.name.trim()) {
+    user.name = updates.name.trim();
+  }
+
+  if (typeof updates.phone === "string") {
+    const phoneTrimmed = updates.phone.trim();
+    if (phoneTrimmed) {
+      const phoneRegex = /^[0-9+\s\-().]{7,20}$/;
+      if (!phoneRegex.test(phoneTrimmed)) {
+        const error = new Error("Please provide a valid phone number");
+        error.statusCode = 400;
+        throw error;
+      }
+      user.phone = phoneTrimmed;
+      customer.phone = phoneTrimmed;
+    }
+  }
+
+  // Permitted Customer profile fields
+  if (typeof updates.companyName === "string") {
+    customer.companyName = updates.companyName.trim();
+  }
+
+  if (updates.billingAddress && typeof updates.billingAddress === "object") {
+    customer.billingAddress = {
+      street: typeof updates.billingAddress.street === "string" ? updates.billingAddress.street.trim() : (customer.billingAddress?.street || ""),
+      city: typeof updates.billingAddress.city === "string" ? updates.billingAddress.city.trim() : (customer.billingAddress?.city || ""),
+      state: typeof updates.billingAddress.state === "string" ? updates.billingAddress.state.trim() : (customer.billingAddress?.state || ""),
+      country: typeof updates.billingAddress.country === "string" ? updates.billingAddress.country.trim() : (customer.billingAddress?.country || ""),
+      postalCode: typeof updates.billingAddress.postalCode === "string" ? updates.billingAddress.postalCode.trim() : (customer.billingAddress?.postalCode || ""),
+    };
+  }
+
+  if (typeof updates.taxIdentificationNumber === "string") {
+    customer.taxIdentificationNumber = updates.taxIdentificationNumber.trim();
+  }
+
+  // Note: Customers CANNOT update their role, permissions, active status, customerNumber or authentication fields.
+  await user.save();
+  await customer.save();
+  await customer.populate("userId");
+
+  return customer.toSafeObject();
+};
+

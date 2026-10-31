@@ -64,21 +64,21 @@ export const authenticate = async (req, res, next) => {
       });
     }
 
-    // 4. Validate tokenVersion to detect invalidated sessions
+    // 4. Reject disabled accounts
+    if (user.status === USER_STATUS.DISABLED) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account is disabled. Access denied.",
+      });
+    }
+
+    // 5. Validate tokenVersion to detect invalidated sessions
     const tokenVersion   = typeof decoded.tokenVersion === "number" ? decoded.tokenVersion : 0;
     const dbTokenVersion = typeof user.tokenVersion    === "number" ? user.tokenVersion    : 0;
     if (tokenVersion < dbTokenVersion) {
       return res.status(401).json({
         success: false,
         message: "Session has been invalidated. Please log in again with your new password.",
-      });
-    }
-
-    // 5. Reject disabled accounts
-    if (user.status === USER_STATUS.DISABLED) {
-      return res.status(403).json({
-        success: false,
-        message: "Your account is disabled. Access denied.",
       });
     }
 

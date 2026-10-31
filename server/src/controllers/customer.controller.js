@@ -91,3 +91,35 @@ export const updateCustomer = async (req, res) => {
     });
   }
 };
+
+export const getCustomerMe = async (req, res) => {
+  try {
+    const customer = await customerService.getCustomerMe(req.user);
+    return res.status(200).json({
+      success: true,
+      customer,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to retrieve profile",
+    });
+  }
+};
+
+export const updateCustomerMe = async (req, res) => {
+  try {
+    const customer = await customerService.updateCustomerMe(req.user, req.body);
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      customer,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to update profile",
+    });
+  }
+};
+

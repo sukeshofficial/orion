@@ -4,6 +4,8 @@ import {
   listCustomers,
   getCustomer,
   updateCustomer,
+  getCustomerMe,
+  updateCustomerMe,
 } from "../controllers/customer.controller.js";
 import {
   authenticate,
@@ -17,6 +19,12 @@ const router = Router();
 
 // All customer endpoints require authentication
 router.use(authenticate);
+
+// ── Customer Self-Service Profile Endpoints (Phase 5) ──────────────────────
+// Authenticated customers can retrieve and update their own customer profile.
+// Identifies customer solely by authenticated user identity (req.user), not from body/URL param.
+router.get("/me", getCustomerMe);
+router.patch("/me", updateCustomerMe);
 
 // ── Customer Management Routes ───────────────────────────────────────────────
 // Accessible to Admin and Internal Staff with customer permissions.
