@@ -34,11 +34,20 @@ export default function InvoiceDetails() {
     }
   }, [dispatch, id])
 
-  const invNum = inv?.invoiceNumber || "INV-2026-002"
-  const total = inv?.totalAmount || inv?.total || 12000000
-  const paid = inv?.paidAmount || 6000000
-  const outstanding = Math.max(0, total - paid)
-  const status = (inv?.status || "Overdue").toLowerCase()
+  const invNum = inv?.invoiceNumber || (inv?._id ? `INV-${inv._id.slice(-6).toUpperCase()}` : "Invoice")
+  const total = inv?.totalAmount ?? inv?.total ?? 0
+  const paid = inv?.paidAmount ?? 0
+  const outstanding = inv?.outstandingAmount ?? Math.max(0, total - paid)
+  const status = (inv?.status || "draft").toLowerCase()
+
+  const customer = inv?.customerId || inv?.customer || {}
+  const custName = customer.name || customer.companyName || inv?.customerName || "—"
+  const custEmail = customer.email || customer.userId?.email || inv?.customerEmail || "—"
+  const custPhone = customer.phone || "—"
+  const custCompany = customer.companyName || customer.company || "—"
+
+  const subNumber = inv?.subscriptionId?.subscriptionNumber || inv?.subscription?.subscriptionNumber || inv?.subscriptionNumber || "—"
+  const planName = inv?.subscriptionId?.plan?.name || inv?.subscription?.plan?.name || inv?.planName || "—"
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -62,12 +71,16 @@ export default function InvoiceDetails() {
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {invNum}
                 </h1>
-                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 border border-red-200 dark:border-red-900/50 capitalize">
+                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border capitalize ${
+                  status === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                  status === "overdue" ? "bg-red-50 text-red-700 border-red-200" :
+                  "bg-blue-50 text-blue-700 border-blue-200"
+                }`}>
                   {status}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Issued Sep 15, 2026 · Due Oct 15, 2026
+                Issued {inv?.invoiceDate ? formatDate(inv.invoiceDate) : "—"} · Due {inv?.dueDate ? formatDate(inv.dueDate) : "—"}
               </p>
             </div>
           </div>
@@ -172,21 +185,21 @@ export default function InvoiceDetails() {
               </div>
               <div>
                 <span className="text-slate-400 block">Subscription</span>
-                <span className="font-semibold text-blue-600 dark:text-blue-400">SUB-0011</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">{subNumber}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Plan</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  Enterprise Plan
+                  {planName}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Invoice Date</span>
-                <span className="font-medium text-slate-800 dark:text-slate-200">Sep 15, 2026</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{inv?.invoiceDate ? formatDate(inv.invoiceDate) : "—"}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Due Date</span>
-                <span className="font-medium text-slate-800 dark:text-slate-200">Oct 15, 2026</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{inv?.dueDate ? formatDate(inv.dueDate) : "—"}</span>
               </div>
               <div>
                 <span className="text-slate-400 block">Status</span>
@@ -203,25 +216,25 @@ export default function InvoiceDetails() {
               <div>
                 <span className="text-slate-400 block">Name</span>
                 <span className="font-semibold text-slate-900 dark:text-white text-sm">
-                  Acme Corp
+                  {custName}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Email</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  acme@company.com
+                  {custEmail}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Phone</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  +1 555 010 1234
+                  {custPhone}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Company</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  Acme Corporation
+                  {custCompany}
                 </span>
               </div>
             </div>

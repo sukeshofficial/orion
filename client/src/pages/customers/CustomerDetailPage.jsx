@@ -348,8 +348,8 @@ export default function CustomerDetailPage() {
   }
 
   const c = selectedCustomer
-  const name = c.userId?.name ?? "—"
-  const email = c.userId?.email ?? "—"
+  const name = c.userId?.name || c.name || c.companyName || "—"
+  const email = c.userId?.email || c.email || "—"
   const userInitial = name.charAt(0).toUpperCase()
   const address = c.billingAddress
   const addressLine = address

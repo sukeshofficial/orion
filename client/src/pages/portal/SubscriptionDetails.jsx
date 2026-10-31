@@ -58,9 +58,18 @@ export default function SubscriptionDetails() {
     dispatch(fetchSubscriptionById(id))
   }
 
-  const subNum = sub?.subscriptionNumber || "SUB-0012"
-  const planName = sub?.plan?.name || sub?.planName || "Business Plan"
-  const status = (sub?.status || "Active").toLowerCase()
+  const subNum = sub?.subscriptionNumber || (sub?._id ? `SUB-${sub._id.slice(-6).toUpperCase()}` : "Subscription")
+  const planName = sub?.plan?.name || sub?.planName || "Plan"
+  const status = (sub?.status || "active").toLowerCase()
+  const customer = sub?.customer || sub?.customerId || {}
+  const custName = customer.name || customer.companyName || "—"
+  const custEmail = customer.email || customer.userId?.email || "—"
+  const custPhone = customer.phone || "—"
+  const custCompany = customer.companyName || customer.company || "—"
+  const cAddr = customer.billingAddress || customer.address
+  const custAddress = typeof cAddr === "string" ? cAddr : cAddr ? [cAddr.street, cAddr.city, cAddr.country].filter(Boolean).join(", ") : "—"
+
+  const capabilities = sub?.plan?.capabilities || {}
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -91,10 +100,10 @@ export default function SubscriptionDetails() {
               <p className="text-xs text-slate-500 mt-0.5">
                 <span className="font-medium text-slate-700 dark:text-slate-300">{planName}</span>
                 {" · "}
-                <span>{sub?.billingInterval || "Monthly"}</span>
+                <span className="capitalize">{sub?.billingInterval || "Monthly"}</span>
                 {" · "}
                 <span>
-                  {formatDate(sub?.startDate || "2026-10-01")} - {formatDate(sub?.expiryDate || "2027-10-01")}
+                  {sub?.startDate ? formatDate(sub.startDate) : "—"} - {sub?.expiryDate ? formatDate(sub.expiryDate) : "—"}
                 </span>
               </p>
             </div>
@@ -206,19 +215,19 @@ export default function SubscriptionDetails() {
               <div>
                 <span className="text-slate-400 block">Start Date</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  {formatDate(sub?.startDate || "2026-10-01")}
+                  {sub?.startDate ? formatDate(sub.startDate) : "—"}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Expiry Date</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  {formatDate(sub?.expiryDate || "2027-10-01")}
+                  {sub?.expiryDate ? formatDate(sub.expiryDate) : "—"}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Next Billing Date</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  Nov 01, 2026
+                  {sub?.nextBillingDate ? formatDate(sub.nextBillingDate) : "—"}
                 </span>
               </div>
             </div>
@@ -233,31 +242,31 @@ export default function SubscriptionDetails() {
               <div>
                 <span className="text-slate-400 block">Name</span>
                 <span className="font-semibold text-slate-900 dark:text-white text-sm">
-                  Acme Corp
+                  {custName}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Email</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  acme@company.com
+                  {custEmail}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Phone</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  +1 555 010 1234
+                  {custPhone}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Company</span>
                 <span className="font-medium text-slate-800 dark:text-slate-200">
-                  Acme Corporation
+                  {custCompany}
                 </span>
               </div>
               <div>
                 <span className="text-slate-400 block">Billing Address</span>
                 <span className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  123 Business Park Drive, San Francisco, CA 94107, United States
+                  {custAddress}
                 </span>
               </div>
             </div>
@@ -270,30 +279,35 @@ export default function SubscriptionDetails() {
                 Plan Usage
               </h2>
               <div className="flex items-center justify-between text-xs font-semibold mb-1">
-                <span className="text-slate-900 dark:text-white">5 / 10 seats used</span>
-                <span className="text-slate-500">50%</span>
-              </div>
-              <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full rounded-full" style={{ width: "50%" }} />
+                <span className="text-slate-900 dark:text-white">Active Subscription</span>
+                <span className="text-emerald-500 font-bold capitalize">{status}</span>
               </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 dark:text-slate-400">Auto-close at expiry</span>
-                <span className="text-emerald-600 font-semibold">Enabled</span>
+                <span className={`font-semibold ${capabilities.autoCloseAtExpiry !== false ? "text-emerald-600" : "text-slate-400"}`}>
+                  {capabilities.autoCloseAtExpiry !== false ? "Enabled" : "Disabled"}
+                </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 dark:text-slate-400">Allow early closure</span>
-                <span className="text-emerald-600 font-semibold">Enabled</span>
+                <span className={`font-semibold ${capabilities.allowEarlyClosure !== false ? "text-emerald-600" : "text-slate-400"}`}>
+                  {capabilities.allowEarlyClosure !== false ? "Enabled" : "Disabled"}
+                </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 dark:text-slate-400">Allow pause</span>
-                <span className="text-emerald-600 font-semibold">Enabled</span>
+                <span className={`font-semibold ${capabilities.allowPause !== false ? "text-emerald-600" : "text-slate-400"}`}>
+                  {capabilities.allowPause !== false ? "Enabled" : "Disabled"}
+                </span>
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-600 dark:text-slate-400">Allow renewal</span>
-                <span className="text-emerald-600 font-semibold">Enabled</span>
+                <span className={`font-semibold ${capabilities.allowRenewal !== false ? "text-emerald-600" : "text-slate-400"}`}>
+                  {capabilities.allowRenewal !== false ? "Enabled" : "Disabled"}
+                </span>
               </div>
             </div>
           </div>

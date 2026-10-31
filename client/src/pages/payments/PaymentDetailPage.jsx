@@ -69,23 +69,37 @@ export default function PaymentDetailPage() {
     )
   }
 
-  const payRef = payment.paymentReference || "PAY-2026-0012"
-  const custName = payment.customer?.name || payment.customerName || "Acme Corp"
-  const custEmail = payment.customer?.email || "acme@company.com"
-  const custPhone = payment.customer?.phone || "+1 555 010 1234"
-  const custCompany = payment.customer?.company || "Acme Corporation"
-  const custAddress = "123 Business Park Drive, San Francisco, CA 94107, United States"
+  const payRef = payment.paymentReference || payment._id || "Payment"
+  const custName = payment.customer?.name || payment.customerName || (typeof payment.customer === "string" ? payment.customer : "Customer")
+  const custEmail = payment.customer?.email || "—"
+  const custPhone = payment.customer?.phone || payment.customer?.phoneNumber || "—"
+  const custCompany = payment.customer?.companyName || payment.customer?.company || "—"
+  
+  const bAddr = payment.customer?.billingAddress || payment.customer?.address
+  const custAddress = typeof bAddr === "string" 
+    ? bAddr 
+    : bAddr 
+      ? [bAddr.street, bAddr.city, bAddr.state, bAddr.postalCode, bAddr.country].filter(Boolean).join(", ") 
+      : "—"
 
-  const invNum = payment.invoice?.invoiceNumber || payment.invoiceNumber || "INV-2026-001"
-  const invId = payment.invoice?.id || payment.invoice?._id || invNum
+  const invNum = payment.invoice?.invoiceNumber || payment.invoiceNumber || (payment.invoice?._id ? `INV-${payment.invoice._id.slice(-6).toUpperCase()}` : "—")
+  const invId = payment.invoice?._id || payment.invoice?.id || payment.invoiceId || invNum
 
-  const payAmount = payment.amount || 5000000
-  const invTotal = payment.invoice?.total || 10000000
-  const alreadyPaid = payment.invoice?.paidAmount || 5000000
-  const outstanding = Math.max(0, invTotal - alreadyPaid)
+  const payAmount = payment.amount || 0
+  const invTotal = payment.invoice?.total ?? payment.invoice?.totalAmount ?? payAmount
+  const alreadyPaid = payment.invoice?.paidAmount ?? payAmount
+  const outstanding = payment.invoice?.outstandingAmount ?? Math.max(0, invTotal - alreadyPaid)
 
-  const paymentDate = payment.paymentDate || "2026-10-20T14:30:00.000Z"
+  const paymentDate = payment.paymentDate || payment.createdAt
   const createdDate = payment.createdAt || paymentDate
+  const paymentMethod = payment.paymentMethod || payment.method || "Bank Transfer"
+  const paymentStatus = payment.status || "Completed"
+  const invoiceStatus = payment.invoice?.status || (outstanding === 0 ? "Paid" : "Partially Paid")
+  const subNumber = payment.invoice?.subscription?.subscriptionNumber || payment.invoice?.subscriptionNumber || "—"
+  const planName = payment.invoice?.subscription?.plan?.name || payment.invoice?.planName || "—"
+  const invDate = payment.invoice?.invoiceDate ? formatDate(payment.invoice.invoiceDate) : "—"
+  const invDueDate = payment.invoice?.dueDate ? formatDate(payment.invoice.dueDate) : "—"
+  const createdByName = payment.createdBy?.name || (typeof payment.createdBy === "string" ? payment.createdBy : "Staff User")
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -110,8 +124,8 @@ export default function PaymentDetailPage() {
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {payRef}
                 </h1>
-                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50">
-                  Completed
+                <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 capitalize">
+                  {paymentStatus}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -119,7 +133,7 @@ export default function PaymentDetailPage() {
                 {" · "}
                 <span>{invNum}</span>
                 {" · "}
-                <span>{formatDate(paymentDate)} · 02:30 PM</span>
+                <span>{formatDate(paymentDate)}</span>
               </p>
             </div>
           </div>
@@ -243,38 +257,38 @@ export default function PaymentDetailPage() {
             <div>
               <span className="text-slate-400 block">Payment Method</span>
               <span className="font-semibold text-blue-600 dark:text-blue-400">
-                {payment.method || "Bank Transfer"}
+                {paymentMethod}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Payment Date</span>
               <span className="font-medium text-slate-800 dark:text-slate-200">
-                {formatDate(paymentDate)}, 02:30 PM
+                {formatDate(paymentDate)}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Notes</span>
               <span className="text-slate-700 dark:text-slate-300">
-                {payment.notes || "First payment"}
+                {payment.notes || "—"}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Status</span>
-              <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5 capitalize">
                 <span className="size-2 rounded-full bg-emerald-500" />
-                Completed
+                {paymentStatus}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Created By</span>
               <span className="font-medium text-slate-800 dark:text-slate-200">
-                {payment.createdBy || "Admin User"}
+                {createdByName}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Created At</span>
               <span className="text-slate-500">
-                {formatDate(createdDate)}, 02:32 PM
+                {formatDate(createdDate)}
               </span>
             </div>
           </div>
@@ -304,25 +318,25 @@ export default function PaymentDetailPage() {
             <div>
               <span className="text-slate-400 block">Subscription</span>
               <span className="font-semibold text-blue-600 dark:text-blue-400">
-                {payment.invoice?.subscriptionNumber || "SUB-0012"}
+                {subNumber}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Plan</span>
               <span className="font-medium text-slate-800 dark:text-slate-200">
-                {payment.invoice?.planName || "Business Plan"}
+                {planName}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Invoice Date</span>
               <span className="font-medium text-slate-800 dark:text-slate-200">
-                Oct 01, 2026
+                {invDate}
               </span>
             </div>
             <div>
               <span className="text-slate-400 block">Due Date</span>
               <span className="font-medium text-slate-800 dark:text-slate-200">
-                Oct 31, 2026
+                {invDueDate}
               </span>
             </div>
             <div>
@@ -345,8 +359,8 @@ export default function PaymentDetailPage() {
             </div>
             <div>
               <span className="text-slate-400 block">Status</span>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 mt-0.5">
-                Partially Paid
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400 border border-blue-200 dark:border-blue-900/50 mt-0.5 capitalize">
+                {invoiceStatus}
               </span>
             </div>
           </div>
@@ -404,19 +418,21 @@ export default function PaymentDetailPage() {
                   Payment recorded
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  Oct 20, 2026, 02:30 PM · {formatCurrency(payAmount)} via {payment.method || "Bank Transfer"}
+                  {formatDate(paymentDate)} · {formatCurrency(payAmount)} via {paymentMethod}
                 </div>
               </div>
 
-              <div className="relative">
-                <div className="size-3.5 rounded-full bg-blue-500 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
-                <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                  Invoice created
+              {payment.invoice && (
+                <div className="relative">
+                  <div className="size-3.5 rounded-full bg-blue-500 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
+                  <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                    Invoice created
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    {payment.invoice.createdAt ? formatDate(payment.invoice.createdAt) : invDate} · Total {formatCurrency(invTotal)}
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
-                  Oct 01, 2026, 10:15 AM · Total {formatCurrency(invTotal)}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

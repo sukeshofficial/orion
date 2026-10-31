@@ -54,9 +54,10 @@ export const calculateQuotationPricing = async ({
 
   for (const line of lines) {
     const qty = Math.max(1, parseInt(line.quantity, 10) || 1);
-    const product = await Product.findById(line.productId).populate("taxIds");
+    const prodId = line.productId || line.product;
+    const product = await Product.findById(prodId).populate("taxIds");
     if (!product) {
-      const error = new Error(`Product ${line.productId} not found`);
+      const error = new Error(`Product ${prodId} not found`);
       error.statusCode = 404;
       throw error;
     }
@@ -71,13 +72,14 @@ export const calculateQuotationPricing = async ({
     let variantAdjustment = 0;
     let selectedVariant = null;
 
-    if (line.variantId && product.variants?.length > 0) {
+    const varId = line.variantId || line.variant;
+    if (varId && product.variants?.length > 0) {
       selectedVariant = product.variants.find(
-        (v) => (v._id ? v._id.toString() : v.id) === line.variantId.toString()
+        (v) => (v._id ? v._id.toString() : v.id) === varId.toString()
       );
       if (!selectedVariant) {
         const error = new Error(
-          `Variant ${line.variantId} not found on product "${product.name}"`
+          `Variant ${varId} not found on product "${product.name}"`
         );
         error.statusCode = 400;
         throw error;

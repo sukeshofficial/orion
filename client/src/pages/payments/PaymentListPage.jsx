@@ -127,7 +127,7 @@ export default function PaymentListPage() {
               Total Payments
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {stats?.totalPayments ?? 36}
+              {stats?.totalPayments ?? payments.length}
             </div>
           </div>
         </div>
@@ -141,7 +141,7 @@ export default function PaymentListPage() {
               Total Amount Received
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {formatCurrency(stats?.totalAmountReceived ?? 48200000)}
+              {formatCurrency(stats?.totalAmountReceived ?? 0)}
             </div>
           </div>
         </div>
@@ -155,7 +155,7 @@ export default function PaymentListPage() {
               Pending Amount
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {formatCurrency(stats?.pendingAmount ?? 12600000)}
+              {formatCurrency(stats?.pendingAmount ?? 0)}
             </div>
           </div>
         </div>
@@ -169,7 +169,7 @@ export default function PaymentListPage() {
               Fully Paid Invoices
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {stats?.fullyPaidInvoices ?? 18}
+              {stats?.fullyPaidInvoices ?? 0}
             </div>
           </div>
         </div>
@@ -183,7 +183,7 @@ export default function PaymentListPage() {
               Partially Paid
             </div>
             <div className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">
-              {stats?.partiallyPaid ?? 12}
+              {stats?.partiallyPaid ?? 0}
             </div>
           </div>
         </div>
@@ -286,9 +286,10 @@ export default function PaymentListPage() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {payments.map((pay, idx) => {
                   const pId = pay._id || pay.id || pay.paymentReference
-                  const custName = pay.customer?.name || pay.customerName || "Customer"
-                  const invNum = pay.invoice?.invoiceNumber || pay.invoiceNumber || "INV-2026-001"
-                  const invId = pay.invoice?.id || pay.invoice?._id || invNum
+                  const custName = pay.customer?.name || pay.customerName || (typeof pay.customer === 'string' ? pay.customer : "Customer")
+                  const invNum = pay.invoice?.invoiceNumber || pay.invoiceNumber || (pay.invoice?._id ? `INV-${pay.invoice._id.slice(-6).toUpperCase()}` : "—")
+                  const invId = pay.invoice?._id || pay.invoice?.id || pay.invoiceId || invNum
+                  const paymentMethod = pay.paymentMethod || pay.method || "Bank Transfer"
 
                   return (
                     <tr key={pId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
@@ -298,7 +299,7 @@ export default function PaymentListPage() {
                           to={`${basePath}/payments/${pId}`}
                           className="hover:text-blue-600 dark:hover:text-blue-400 transition"
                         >
-                          {pay.paymentReference}
+                          {pay.paymentReference || pId}
                         </Link>
                       </td>
                       <td className="py-3.5 px-4">
@@ -317,10 +318,10 @@ export default function PaymentListPage() {
                       <td className="py-3.5 px-4">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getMethodBadge(
-                            pay.method
+                            paymentMethod
                           )}`}
                         >
-                          {pay.method}
+                          {paymentMethod}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
@@ -374,7 +375,7 @@ export default function PaymentListPage() {
         {/* ── Pagination ─────────────────────────────────────────────────── */}
         <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
           <div>
-            Showing 1 to {Math.min(limit, payments.length)} of {pagination.total || 36} payments
+            Showing {payments.length === 0 ? 0 : 1} to {payments.length} of {pagination?.total || payments.length} payments
           </div>
           <div className="flex items-center gap-2">
             <button

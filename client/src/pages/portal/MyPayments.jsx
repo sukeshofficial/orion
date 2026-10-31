@@ -23,7 +23,7 @@ export default function MyPayments() {
     dispatch(fetchPayments({ limit: 50 }))
   }, [dispatch])
 
-  const myPayments = (payments || []).slice(0, 4)
+  const myPayments = payments || []
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -64,14 +64,15 @@ export default function MyPayments() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {myPayments.map((pay, idx) => {
                   const pId = pay._id || pay.id
-                  const invNum = pay.invoice?.invoiceNumber || pay.invoiceNumber || "INV-2026-001"
-                  const invId = pay.invoice?.id || pay.invoice?._id || invNum
+                  const invNum = pay.invoice?.invoiceNumber || pay.invoiceNumber || (pay.invoice?._id ? `INV-${pay.invoice._id.slice(-6).toUpperCase()}` : "—")
+                  const invId = pay.invoice?._id || pay.invoice?.id || pay.invoiceId || invNum
+                  const paymentMethod = pay.paymentMethod || pay.method || "Bank Transfer"
 
                   return (
                     <tr key={pId || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
                       <td className="py-3.5 px-4 text-slate-400">{idx + 1}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
-                        {pay.paymentReference || `PAY-2026-00${12 - idx}`}
+                        {pay.paymentReference || (pId ? `PAY-${pId.slice(-6).toUpperCase()}` : "—")}
                       </td>
                       <td className="py-3.5 px-4">
                         <Link
@@ -82,13 +83,13 @@ export default function MyPayments() {
                         </Link>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                        {formatDate(pay.paymentDate || "2026-10-20")}
+                        {pay.paymentDate ? formatDate(pay.paymentDate) : (pay.createdAt ? formatDate(pay.createdAt) : "—")}
                       </td>
                       <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                        {pay.method || "Bank Transfer"}
+                        {paymentMethod}
                       </td>
                       <td className="py-3.5 px-4 text-right font-bold text-slate-900 dark:text-white">
-                        {formatCurrency(pay.amount || 5000000)}
+                        {formatCurrency(pay.amount || 0)}
                       </td>
                     </tr>
                   )
