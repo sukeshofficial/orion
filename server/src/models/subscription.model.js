@@ -242,11 +242,56 @@ const subscriptionSchema = new mongoose.Schema(
 subscriptionSchema.index({ subscriptionNumber: "text" });
 
 subscriptionSchema.methods.toSafeObject = function () {
+  // Handle populated customerId — extract friendly fields for the frontend
+  const custRaw = this.customerId;
+  let customerObj = custRaw;
+  if (custRaw && typeof custRaw === "object" && custRaw._id) {
+    const userId = custRaw.userId;
+    const userObj = userId && typeof userId === "object" ? userId : null;
+    customerObj = {
+      id: custRaw._id ? custRaw._id.toString() : custRaw.id,
+      _id: custRaw._id ? custRaw._id.toString() : custRaw.id,
+      customerNumber: custRaw.customerNumber,
+      companyName: custRaw.companyName || "",
+      phone: custRaw.phone || (userObj ? userObj.phone : ""),
+      billingAddress: custRaw.billingAddress || {},
+      taxIdentificationNumber: custRaw.taxIdentificationNumber || "",
+      isActive: custRaw.isActive !== false,
+      userId: userObj
+        ? {
+            id: userObj._id ? userObj._id.toString() : userObj.id,
+            name: userObj.name || "",
+            email: userObj.email || "",
+            phone: userObj.phone || "",
+          }
+        : custRaw.userId,
+      // Flattened convenience fields
+      name: (userObj && userObj.name) || custRaw.companyName || "Customer",
+      email: (userObj && userObj.email) || "",
+    };
+  }
+
+  // Handle populated planId
+  const planRaw = this.planId;
+  let planObj = planRaw;
+  if (planRaw && typeof planRaw === "object" && planRaw._id) {
+    planObj = {
+      id: planRaw._id ? planRaw._id.toString() : planRaw.id,
+      _id: planRaw._id ? planRaw._id.toString() : planRaw.id,
+      name: planRaw.name,
+      price: planRaw.price,
+      billingInterval: planRaw.billingInterval,
+      allowPause: planRaw.allowPause,
+      allowRenewal: planRaw.allowRenewal,
+      allowEarlyClosure: planRaw.allowEarlyClosure,
+    };
+  }
+
   return {
     id: this._id ? this._id.toString() : this.id,
     subscriptionNumber: this.subscriptionNumber,
-    customerId: this.customerId,
-    planId: this.planId,
+    customerId: customerObj,
+    planId: planObj,
     quotationId: this.quotationId,
     planSnapshot: this.planSnapshot,
     startDate: this.startDate,
@@ -261,6 +306,9 @@ subscriptionSchema.methods.toSafeObject = function () {
     discountSnapshot: this.discountSnapshot,
     discountTotal: this.discountTotal,
     grandTotal: this.grandTotal,
+    totalAmount: this.grandTotal,
+    amount: this.grandTotal,
+    total: this.grandTotal,
     status: this.status,
     pausedAt: this.pausedAt,
     closedAt: this.closedAt,

@@ -109,6 +109,31 @@ export const listCustomers = async ({
   isActive,
   status,
 }) => {
+  // Auto-sync customer profiles for existing customer/user accounts that don't have one
+  try {
+    const customerUsers = await User.find({
+      role: { $in: [USER_ROLES.USER, "customer", "end_user"] },
+    }).select("_id name email phone");
+
+    for (const u of customerUsers) {
+      const existing = await Customer.findOne({ userId: u._id });
+      if (!existing) {
+        const custNum = await generateCustomerNumber();
+        await Customer.create({
+          userId: u._id,
+          customerNumber: custNum,
+          companyName: u.name || "Customer",
+          phone: u.phone || "",
+          billingAddress: {},
+          taxIdentificationNumber: "",
+          isActive: true,
+        });
+      }
+    }
+  } catch (syncErr) {
+    console.error("Auto customer sync error:", syncErr?.message);
+  }
+
   const query = {};
 
   if (typeof isActive !== "undefined" && isActive !== null && isActive !== "") {

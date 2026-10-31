@@ -8,6 +8,7 @@ import Quotation, {
 import Customer from "../models/customer.model.js";
 import Plan from "../models/plan.model.js";
 import Product from "../models/product.model.js";
+import User from "../models/user.model.js";
 import {
   calculateNextBillingDate,
   calculatePlanExpiryDate,
@@ -16,6 +17,7 @@ import {
 import { calculateQuotationPricing } from "./quotation.service.js";
 import { recordDiscountUsage } from "./discount.service.js";
 import { USER_ROLES, normalizeRole } from "../config/roles.js";
+import { generateCustomerNumber } from "./customer.service.js";
 
 /**
  * Subscription Service
@@ -205,18 +207,62 @@ export const createSubscription = async ({
   planId,
   lines = [],
   startDate = new Date(),
-  paymentTerms = PAYMENT_TERMS.IMMEDIATE,
+  expiryDate: expiryDateOverride = null,
+  billingInterval: rawBillingInterval,
+  paymentTerms: rawPaymentTerms = PAYMENT_TERMS.IMMEDIATE,
+  autoRenew,
+  allowPause: allowPauseOverride,
+  allowEarlyClosure: allowEarlyClosureOverride,
   discountId = null,
   status = SUBSCRIPTION_STATUS.CONFIRMED,
   createdBy,
 }) => {
+  // Normalize paymentTerms: accept "Net 30" → "net_30", "Immediate" → "immediate", etc.
+  const paymentTermsNormalized = (() => {
+    const raw = String(rawPaymentTerms || "").trim();
+    const directMatch = Object.values(PAYMENT_TERMS).find((v) => v === raw);
+    if (directMatch) return directMatch;
+    // Map human-readable labels to enum values
+    const labelMap = {
+      "immediate": PAYMENT_TERMS.IMMEDIATE,
+      "due on receipt": PAYMENT_TERMS.IMMEDIATE,
+      "net 15": PAYMENT_TERMS.NET_15,
+      "net 30": PAYMENT_TERMS.NET_30,
+      "net 60": PAYMENT_TERMS.NET_60,
+      "net15": PAYMENT_TERMS.NET_15,
+      "net30": PAYMENT_TERMS.NET_30,
+      "net60": PAYMENT_TERMS.NET_60,
+    };
+    return labelMap[raw.toLowerCase()] || PAYMENT_TERMS.IMMEDIATE;
+  })();
+  const paymentTerms = paymentTermsNormalized;
   if (!customerId) {
     const error = new Error("customerId is required");
     error.statusCode = 400;
     throw error;
   }
 
-  const customer = await Customer.findById(customerId);
+  let customer = await Customer.findById(customerId);
+  if (!customer) {
+    customer = await Customer.findOne({ userId: customerId });
+  }
+  if (!customer) {
+    // Try looking up by userId (in case customerId is actually a userId)
+    const user = await User.findById(customerId);
+    if (user) {
+      const custNum = await generateCustomerNumber();
+      customer = await Customer.create({
+        userId: user._id,
+        customerNumber: custNum,
+        companyName: user.name || "Customer",
+        phone: user.phone || "",
+        billingAddress: {},
+        taxIdentificationNumber: "",
+        isActive: true,
+      });
+    }
+  }
+
   if (!customer) {
     const error = new Error("Customer not found");
     error.statusCode = 404;
@@ -256,9 +302,15 @@ export const createSubscription = async ({
   });
 
   const start = new Date(startDate);
-  const billingInterval = plan.billingInterval || BILLING_INTERVALS.MONTHLY;
+  const normalizedInterval = rawBillingInterval ? String(rawBillingInterval).toLowerCase() : null;
+  const billingInterval =
+    normalizedInterval && Object.values(BILLING_INTERVALS).includes(normalizedInterval)
+      ? normalizedInterval
+      : (plan.billingInterval || BILLING_INTERVALS.MONTHLY);
   const nextBillingDate = calculateNextBillingDate(start, billingInterval);
-  const expiryDate = calculatePlanExpiryDate(start, billingInterval, 12);
+  const expiryDate = expiryDateOverride
+    ? new Date(expiryDateOverride)
+    : calculatePlanExpiryDate(start, billingInterval, 12);
 
   const subscriptionNumber = await generateSubscriptionNumber();
 
@@ -274,10 +326,10 @@ export const createSubscription = async ({
       id: plan._id ? plan._id.toString() : plan.id,
       name: plan.name,
       price: plan.price,
-      billingInterval: plan.billingInterval,
-      allowPause: plan.allowPause,
-      allowRenewal: plan.allowRenewal,
-      allowEarlyClosure: plan.allowEarlyClosure,
+      billingInterval,
+      allowPause: allowPauseOverride !== undefined ? allowPauseOverride : plan.allowPause,
+      allowRenewal: autoRenew !== undefined ? autoRenew : plan.allowRenewal,
+      allowEarlyClosure: allowEarlyClosureOverride !== undefined ? allowEarlyClosureOverride : plan.allowEarlyClosure,
     },
     startDate: start,
     expiryDate,

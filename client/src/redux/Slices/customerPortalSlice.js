@@ -47,16 +47,7 @@ export const changePassword = createAsyncThunk(
 );
 
 const initialState = {
-  overview: {
-    activeSubscriptions: 2,
-    activeSubscriptionsGrowth: 1,
-    upcomingRenewals: 1,
-    upcomingRenewalsDate: "Nov 01, 2026",
-    outstandingInvoices: 6000000,
-    outstandingCount: 2,
-    recentPayments: 12000000,
-    lastPaymentDate: "Oct 20, 2026",
-  },
+  overview: null,
   profile: null,
   loading: false,
   actionLoading: false,

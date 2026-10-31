@@ -60,9 +60,19 @@ const customerSchema = new mongoose.Schema(
   {
     timestamps: true,
     toJSON: {
+      virtuals: true,
       transform(doc, ret) {
         ret.id = ret._id ? ret._id.toString() : undefined;
-        delete ret._id;
+        ret._id = ret.id;
+        if (ret.userId && typeof ret.userId === "object") {
+          ret.name = ret.userId.name || ret.companyName || "Customer";
+          ret.email = ret.userId.email || "";
+          ret.phone = ret.phone || ret.userId.phone || "";
+        } else {
+          ret.name = ret.companyName || "Customer";
+        }
+        ret.company = ret.companyName || "";
+        ret.taxId = ret.taxIdentificationNumber || "";
         delete ret.__v;
         return ret;
       },
@@ -82,14 +92,31 @@ customerSchema.methods.toSafeObject = function () {
       ? this.userId.toSafeObject()
       : this.userId;
 
+  const id = this._id ? this._id.toString() : this.id;
+  const name =
+    (userSafe && typeof userSafe === "object" && userSafe.name) ||
+    this.companyName ||
+    "Customer";
+  const email =
+    (userSafe && typeof userSafe === "object" && userSafe.email) || "";
+  const phone =
+    this.phone ||
+    (userSafe && typeof userSafe === "object" && userSafe.phone) ||
+    "";
+
   return {
-    id: this._id ? this._id.toString() : this.id,
+    id,
+    _id: id,
     userId: userSafe,
-    customerNumber: this.customerNumber,
+    name,
+    email,
+    phone,
+    company: this.companyName || "",
     companyName: this.companyName || "",
-    phone: this.phone || "",
     billingAddress: this.billingAddress || {},
     taxIdentificationNumber: this.taxIdentificationNumber || "",
+    taxId: this.taxIdentificationNumber || "",
+    customerNumber: this.customerNumber,
     isActive: this.isActive !== false,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,

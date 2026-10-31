@@ -50,7 +50,9 @@ export async function updateCustomer(id, payload) {
  * @returns {{ success, subscriptions }}
  */
 export async function fetchCustomerSubscriptions(id) {
-  const { data } = await api.get(`${BASE}/${id}/subscriptions`);
+  const { data } = await api.get("/api/v1/subscriptions", {
+    params: { customerId: id },
+  });
   return data;
 }
 
@@ -60,7 +62,9 @@ export async function fetchCustomerSubscriptions(id) {
  * @returns {{ success, invoices }}
  */
 export async function fetchCustomerInvoices(id) {
-  const { data } = await api.get(`${BASE}/${id}/invoices`);
+  const { data } = await api.get("/api/v1/invoices", {
+    params: { customerId: id },
+  });
   return data;
 }
 

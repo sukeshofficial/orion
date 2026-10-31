@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import User, { USER_STATUS } from "../models/user.model.js";
+import Customer from "../models/customer.model.js";
+import { generateCustomerNumber } from "./customer.service.js";
 import { USER_ROLES } from "../config/roles.js";
 import { generateToken, verifyToken } from "../utils/token.utils.js";
 import { sendPasswordResetEmail, sendVerificationEmail } from "./email.service.js";
@@ -63,6 +65,22 @@ export const registerUser = async ({ name, email, phone, password, confirmPasswo
 
   await user.save();
   const token = generateToken(user);
+
+  // Automatically provision default Customer profile for new customer account
+  try {
+    const custNum = await generateCustomerNumber();
+    await Customer.create({
+      userId: user._id,
+      customerNumber: custNum,
+      companyName: user.name || "Customer",
+      phone: user.phone || "",
+      billingAddress: {},
+      taxIdentificationNumber: "",
+      isActive: true,
+    });
+  } catch (custErr) {
+    console.error("Auto customer creation error:", custErr?.message);
+  }
 
   // Dispatch verification email in the background without blocking registration response
   try {

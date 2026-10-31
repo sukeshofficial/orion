@@ -45,7 +45,7 @@ export default function SubscriptionWizardPage() {
 
   const { customers, loading: customersLoading } = useSelector((state) => state.customer)
   const { quotations, loading: quotationsLoading } = useSelector((state) => state.quotation)
-  const { plans } = useSelector((state) => state.plan)
+  const { plans, loading: plansLoading } = useSelector((state) => state.plan)
   const { actionLoading, error } = useSelector((state) => state.subscription)
 
   const [currentStep, setCurrentStep] = React.useState(1)
@@ -61,14 +61,14 @@ export default function SubscriptionWizardPage() {
   // Step 3: Plan & Products
   const [selectedPlanId, setSelectedPlanId] = React.useState("")
   const [lines, setLines] = React.useState([])
-  const [billingInterval, setBillingInterval] = React.useState("Monthly")
+  const [billingInterval, setBillingInterval] = React.useState("monthly")
 
   // Step 4: Billing Details
   const [startDate, setStartDate] = React.useState(new Date().toISOString().split("T")[0])
   const [expiryDate, setExpiryDate] = React.useState(
     new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
   )
-  const [paymentTerms, setPaymentTerms] = React.useState("Net 30")
+  const [paymentTerms, setPaymentTerms] = React.useState("net_30")
   const [autoRenew, setAutoRenew] = React.useState(true)
   const [allowPause, setAllowPause] = React.useState(true)
   const [allowEarlyClosure, setAllowEarlyClosure] = React.useState(true)
@@ -82,6 +82,40 @@ export default function SubscriptionWizardPage() {
     dispatch(fetchPlans({ limit: 100 }))
   }, [dispatch])
 
+  // Helper functions for extracting customer fields safely
+  const getCustomerName = React.useCallback((cust) => {
+    if (!cust) return ""
+    return cust.userId?.name || cust.name || cust.companyName || "Customer"
+  }, [])
+
+  const getCustomerEmail = React.useCallback((cust) => {
+    if (!cust) return ""
+    return cust.userId?.email || cust.email || ""
+  }, [])
+
+  const getCustomerCompany = React.useCallback((cust) => {
+    if (!cust) return ""
+    return cust.companyName || cust.company || ""
+  }, [])
+
+  const getCustomerPhone = React.useCallback((cust) => {
+    if (!cust) return ""
+    return cust.phone || cust.userId?.phone || ""
+  }, [])
+
+  const getCustomerTaxId = React.useCallback((cust) => {
+    if (!cust) return ""
+    return cust.taxIdentificationNumber || cust.taxId || ""
+  }, [])
+
+  const getCustomerAddress = React.useCallback((cust) => {
+    if (!cust) return ""
+    const addr = cust.billingAddress || cust.address
+    if (!addr) return ""
+    const parts = [addr.street, addr.city, addr.state, addr.postalCode, addr.country].filter(Boolean)
+    return parts.join(", ")
+  }, [])
+
   // Customer selected object
   const selectedCustomer = React.useMemo(() => {
     return customers?.find((c) => (c._id || c.id) === selectedCustomerId) || null
@@ -89,13 +123,29 @@ export default function SubscriptionWizardPage() {
 
   // Quotations for the selected customer
   const eligibleQuotations = React.useMemo(() => {
-    if (!quotations) return []
+    if (!quotations || !Array.isArray(quotations)) return []
     return quotations.filter((q) => {
-      const qCustId = q.customer?._id || q.customer?.id || q.customer || q.customerId
-      const matchesCustomer = !selectedCustomerId || qCustId === selectedCustomerId
+      const qCustId =
+        q.customerId?._id ||
+        q.customerId?.id ||
+        (typeof q.customerId === "string" ? q.customerId : null) ||
+        q.customer?._id ||
+        q.customer?.id ||
+        (typeof q.customer === "string" ? q.customer : null)
+
+      const matchesCustomer =
+        !selectedCustomerId ||
+        String(qCustId) === String(selectedCustomerId) ||
+        (selectedCustomer?.userId &&
+          String(qCustId) ===
+            String(
+              selectedCustomer.userId?._id ||
+                selectedCustomer.userId?.id ||
+                selectedCustomer.userId
+            ))
       return matchesCustomer
     })
-  }, [quotations, selectedCustomerId])
+  }, [quotations, selectedCustomerId, selectedCustomer])
 
   // When quotation is selected in Step 2, prefill plan, products, payment details
   const selectedQuotation = React.useMemo(() => {
@@ -128,16 +178,22 @@ export default function SubscriptionWizardPage() {
 
   // Step 1 Filtered Customers
   const filteredCustomers = React.useMemo(() => {
-    if (!customers) return []
+    if (!customers || !Array.isArray(customers)) return []
     if (!customerSearch.trim()) return customers
     const q = customerSearch.toLowerCase()
-    return customers.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(q) ||
-        c.email?.toLowerCase().includes(q) ||
-        c.company?.toLowerCase().includes(q)
-    )
-  }, [customers, customerSearch])
+    return customers.filter((c) => {
+      const name = getCustomerName(c).toLowerCase()
+      const email = getCustomerEmail(c).toLowerCase()
+      const company = getCustomerCompany(c).toLowerCase()
+      const num = (c.customerNumber || "").toLowerCase()
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        company.includes(q) ||
+        num.includes(q)
+      )
+    })
+  }, [customers, customerSearch, getCustomerName, getCustomerEmail, getCustomerCompany])
 
   // Step 2 Filtered Quotations
   const filteredQuotations = React.useMemo(() => {
@@ -226,13 +282,19 @@ export default function SubscriptionWizardPage() {
       allowPause,
       allowEarlyClosure,
       totalAmount,
-      lines: lines.map((l) => ({
-        product: l.product?._id || l.product?.id || l.product,
-        variant: l.variant?._id || l.variant?.id || l.variant || undefined,
-        quantity: l.quantity || 1,
-        unitPrice: l.unitPrice || l.price || 0,
-        subtotal: (l.quantity || 1) * (l.unitPrice || l.price || 0),
-      })),
+      lines: lines.map((l) => {
+        const pId = l.product?._id || l.product?.id || l.productId || (typeof l.product === "string" ? l.product : undefined);
+        const vId = l.variant?._id || l.variant?.id || l.variantId || (typeof l.variant === "string" ? l.variant : undefined);
+        return {
+          productId: pId,
+          product: pId,
+          variantId: vId,
+          variant: vId,
+          quantity: l.quantity || 1,
+          unitPrice: l.unitPrice || l.price || 0,
+          subtotal: (l.quantity || 1) * (l.unitPrice || l.price || 0),
+        };
+      }),
     }
 
     const res = await dispatch(createSubscription(payload))
@@ -337,10 +399,20 @@ export default function SubscriptionWizardPage() {
       {currentStep === 1 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Select Customer</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Search and select an existing customer for this subscription.
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Select Customer</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Search and select an existing customer for this subscription.
+                </p>
+              </div>
+              <Link
+                to={`${basePath}/customers/new`}
+                className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium inline-flex items-center gap-1 border border-blue-200 dark:border-blue-900 px-2.5 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-950/30 transition"
+              >
+                + New Customer
+              </Link>
+            </div>
 
             <div className="relative mt-4 mb-4">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -368,12 +440,16 @@ export default function SubscriptionWizardPage() {
               {filteredCustomers.map((cust) => {
                 const cId = cust._id || cust.id
                 const isSelected = selectedCustomerId === cId
-                const initials = (cust.name || "CU")
+                const name = getCustomerName(cust)
+                const email = getCustomerEmail(cust)
+                const company = getCustomerCompany(cust)
+                const initials = (name || "CU")
                   .split(" ")
+                  .filter(Boolean)
                   .map((n) => n[0])
                   .join("")
                   .slice(0, 2)
-                  .toUpperCase()
+                  .toUpperCase() || "CU"
 
                 return (
                   <div
@@ -391,9 +467,22 @@ export default function SubscriptionWizardPage() {
                       </div>
                       <div>
                         <div className="font-medium text-sm text-slate-900 dark:text-white">
-                          {cust.name}
+                          {name}
                         </div>
-                        <div className="text-xs text-slate-500">{cust.email}</div>
+                        <div className="text-xs text-slate-500 flex items-center gap-1.5 flex-wrap">
+                          {email && <span>{email}</span>}
+                          {company && (
+                            <>
+                              <span>•</span>
+                              <span>{company}</span>
+                            </>
+                          )}
+                          {cust.customerNumber && (
+                            <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400">
+                              ({cust.customerNumber})
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -423,41 +512,43 @@ export default function SubscriptionWizardPage() {
                   <div>
                     <span className="text-xs text-slate-400 block">Customer Name</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCustomer.name}
+                      {getCustomerName(selectedCustomer)}
                     </span>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 block">Email</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCustomer.email}
+                      {getCustomerEmail(selectedCustomer) || "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 block">Customer Number</span>
+                    <span className="font-medium font-mono text-blue-600 dark:text-blue-400">
+                      {selectedCustomer.customerNumber || "—"}
                     </span>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 block">Phone</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCustomer.phone || "+1 555 010 1234"}
+                      {getCustomerPhone(selectedCustomer) || "—"}
                     </span>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 block">Company</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCustomer.company || selectedCustomer.name}
+                      {getCustomerCompany(selectedCustomer) || "—"}
                     </span>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 block">Tax Identification Number</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCustomer.taxId || "US123456789"}
+                      {getCustomerTaxId(selectedCustomer) || "—"}
                     </span>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 block">Billing Address</span>
                     <span className="font-medium text-slate-800 dark:text-slate-200">
-                      {selectedCustomer.address
-                        ? `${selectedCustomer.address.street || ""}, ${
-                            selectedCustomer.address.city || ""
-                          }, ${selectedCustomer.address.country || ""}`
-                        : "123 Business Park Drive, San Francisco, CA 94107, United States"}
+                      {getCustomerAddress(selectedCustomer) || "No billing address specified"}
                     </span>
                   </div>
                 </div>
@@ -621,43 +712,79 @@ export default function SubscriptionWizardPage() {
 
           {/* Select Plan */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
-              Select Subscription Plan *
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {plans?.map((p) => {
-                const pId = p._id || p.id
-                const isSelected = selectedPlanId === pId
-                return (
-                  <div
-                    key={pId}
-                    onClick={() => {
-                      setSelectedPlanId(pId)
-                      if (p.billingInterval) setBillingInterval(p.billingInterval)
-                    }}
-                    className={`p-4 rounded-xl border cursor-pointer transition ${
-                      isSelected
-                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 ring-1 ring-blue-500"
-                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-sm text-slate-900 dark:text-white">
-                        {p.name}
-                      </span>
-                      {isSelected && <Check className="w-4 h-4 text-blue-600 stroke-[3]" />}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1 line-clamp-2">{p.description}</div>
-                    <div className="mt-3 flex items-baseline gap-1">
-                      <span className="text-lg font-bold text-slate-900 dark:text-white">
-                        {formatCurrency(p.price || 0)}
-                      </span>
-                      <span className="text-xs text-slate-400">/{p.billingInterval || "mo"}</span>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Select Subscription Plan *
+              </label>
+              <Link
+                to={`${basePath}/plans/new`}
+                className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+              >
+                + New Plan
+              </Link>
             </div>
+
+            {plansLoading && (
+              <div className="py-8 text-center text-slate-400">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                Loading subscription plans...
+              </div>
+            )}
+
+            {!plansLoading && (!plans || plans.length === 0) && (
+              <div className="text-center py-10 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                <Boxes className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                  No subscription plans available
+                </p>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  Please create a subscription plan in the Plans section before proceeding.
+                </p>
+                <Link
+                  to={`${basePath}/plans/new`}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition"
+                >
+                  + Create Subscription Plan
+                </Link>
+              </div>
+            )}
+
+            {!plansLoading && plans && plans.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {plans.map((p) => {
+                  const pId = p._id || p.id
+                  const isSelected = selectedPlanId === pId
+                  return (
+                    <div
+                      key={pId}
+                      onClick={() => {
+                        setSelectedPlanId(pId)
+                        if (p.billingInterval) setBillingInterval(p.billingInterval)
+                      }}
+                      className={`p-4 rounded-xl border cursor-pointer transition ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 ring-1 ring-blue-500"
+                          : "border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm text-slate-900 dark:text-white">
+                          {p.name}
+                        </span>
+                        {isSelected && <Check className="w-4 h-4 text-blue-600 stroke-[3]" />}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1 line-clamp-2">{p.description}</div>
+                      <div className="mt-3 flex items-baseline gap-1">
+                        <span className="text-lg font-bold text-slate-900 dark:text-white">
+                          {formatCurrency(p.price || 0)}
+                        </span>
+                        <span className="text-xs text-slate-400">/{p.billingInterval || "mo"}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Billing Frequency */}
@@ -666,18 +793,23 @@ export default function SubscriptionWizardPage() {
               Billing Interval
             </label>
             <div className="grid grid-cols-4 gap-3 max-w-md">
-              {["Daily", "Weekly", "Monthly", "Yearly"].map((interval) => (
+              {[
+                { value: "daily", label: "Daily" },
+                { value: "weekly", label: "Weekly" },
+                { value: "monthly", label: "Monthly" },
+                { value: "yearly", label: "Yearly" },
+              ].map(({ value, label }) => (
                 <button
-                  key={interval}
+                  key={value}
                   type="button"
-                  onClick={() => setBillingInterval(interval)}
+                  onClick={() => setBillingInterval(value)}
                   className={`py-2 text-xs font-medium rounded-lg border text-center transition ${
-                    billingInterval.toLowerCase() === interval.toLowerCase()
+                    billingInterval === value
                       ? "bg-blue-600 border-blue-600 text-white shadow-sm"
                       : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
                 >
-                  {interval}
+                  {label}
                 </button>
               ))}
             </div>
@@ -789,10 +921,10 @@ export default function SubscriptionWizardPage() {
                 onChange={(e) => setPaymentTerms(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Immediate">Immediate / Due on Receipt</option>
-                <option value="Net 15">Net 15</option>
-                <option value="Net 30">Net 30</option>
-                <option value="Net 60">Net 60</option>
+                <option value="immediate">Immediate / Due on Receipt</option>
+                <option value="net_15">Net 15</option>
+                <option value="net_30">Net 30</option>
+                <option value="net_60">Net 60</option>
               </select>
             </div>
 
@@ -803,7 +935,7 @@ export default function SubscriptionWizardPage() {
               <input
                 type="text"
                 disabled
-                value={billingInterval}
+                value={billingInterval.charAt(0).toUpperCase() + billingInterval.slice(1)}
                 className="w-full px-3 py-2 text-sm bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 cursor-not-allowed"
               />
             </div>
@@ -897,12 +1029,21 @@ export default function SubscriptionWizardPage() {
               </h3>
               <div className="text-sm">
                 <div className="font-semibold text-slate-900 dark:text-white">
-                  {selectedCustomer?.name}
+                  {getCustomerName(selectedCustomer)}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">{selectedCustomer?.email}</div>
                 <div className="text-xs text-slate-500 mt-0.5">
-                  {selectedCustomer?.company || selectedCustomer?.name}
+                  {getCustomerEmail(selectedCustomer)}
                 </div>
+                {getCustomerCompany(selectedCustomer) && (
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {getCustomerCompany(selectedCustomer)}
+                  </div>
+                )}
+                {selectedCustomer?.customerNumber && (
+                  <div className="text-xs font-mono text-blue-600 dark:text-blue-400 mt-1">
+                    {selectedCustomer.customerNumber}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -920,7 +1061,7 @@ export default function SubscriptionWizardPage() {
                 <div className="flex justify-between">
                   <span className="text-slate-500 text-xs">Interval:</span>
                   <span className="font-medium text-slate-900 dark:text-white">
-                    {billingInterval}
+                    {billingInterval.charAt(0).toUpperCase() + billingInterval.slice(1)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -931,7 +1072,9 @@ export default function SubscriptionWizardPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500 text-xs">Payment Terms:</span>
-                  <span className="font-medium text-slate-900 dark:text-white">{paymentTerms}</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {{ immediate: "Immediate", net_15: "Net 15", net_30: "Net 30", net_60: "Net 60" }[paymentTerms] || paymentTerms}
+                  </span>
                 </div>
               </div>
             </div>

@@ -116,7 +116,7 @@ export default function StaffListPage() {
               Active Staff
             </div>
             <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
-              {stats.active ?? 2}
+              {stats.active ?? 0}
             </div>
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function StaffListPage() {
               Disabled
             </div>
             <div className="text-xl font-bold text-red-600 dark:text-red-400 mt-0.5">
-              {stats.disabled ?? 1}
+              {stats.disabled ?? 0}
             </div>
           </div>
         </div>
@@ -144,7 +144,7 @@ export default function StaffListPage() {
               Operational Seats
             </div>
             <div className="text-xl font-bold text-purple-600 dark:text-purple-400 mt-0.5">
-              {stats.operationalSeats ?? 5}
+              {stats.operationalSeats ?? staffList.length}
             </div>
           </div>
         </div>

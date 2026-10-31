@@ -277,12 +277,19 @@ export default function SubscriptionDetailPage() {
   const status = subscription?.status || "Draft";
 
   const customerName =
+    subscription?.customerId?.companyName ||
+    subscription?.customerId?.userId?.name ||
+    subscription?.customerId?.name ||
     subscription?.customer?.displayName ||
     subscription?.customer?.name ||
     subscription?.customerName ||
     "—";
   const customerId =
-    subscription?.customer?._id || subscription?.customer?.id || subscription?.customerId;
+    subscription?.customerId?._id ||
+    subscription?.customerId?.id ||
+    subscription?.customer?._id ||
+    subscription?.customer?.id ||
+    (typeof subscription?.customerId === "string" ? subscription.customerId : null);
 
   const planName =
     subscription?.plan?.name || subscription?.planName || "—";

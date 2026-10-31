@@ -379,7 +379,7 @@ export default function SubscriptionListPage() {
               <option value="">All Customers</option>
               {customers.map((c) => (
                 <option key={c.id || c._id} value={c.id || c._id}>
-                  {c.companyName || c.userId?.name}
+                  {c.name || c.userId?.name || c.companyName || "Customer"}
                 </option>
               ))}
             </select>
@@ -441,8 +441,9 @@ export default function SubscriptionListPage() {
                 subscriptions.map((sub, idx) => {
                   const id = sub.id || sub._id
                   const customerName =
-                    sub.customerId?.companyName ||
+                    sub.customerId?.name ||
                     sub.customerId?.userId?.name ||
+                    sub.customerId?.companyName ||
                     sub.customerName ||
                     "Customer"
                   const planName = sub.planId?.name || sub.planName || "Plan"
@@ -467,7 +468,7 @@ export default function SubscriptionListPage() {
                       <td className="px-4 py-3.5 text-muted-foreground text-xs">{formatDate(sub.startDate)}</td>
                       <td className="px-4 py-3.5 text-muted-foreground text-xs">{formatDate(sub.expiryDate)}</td>
                       <td className="px-4 py-3.5 text-foreground">{interval}</td>
-                      <td className="px-4 py-3.5 font-semibold text-foreground">{formatCurrency(sub.totalAmount || sub.total || 5000000)}</td>
+                      <td className="px-4 py-3.5 font-semibold text-foreground">{formatCurrency(sub.grandTotal ?? sub.totalAmount ?? sub.subtotal ?? 0)}</td>
                       <td className="px-4 py-3.5">
                         <SubStatusBadge status={sub.status} />
                       </td>

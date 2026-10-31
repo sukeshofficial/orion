@@ -296,8 +296,8 @@ export default function InvoiceListPage() {
   // Filters
   const [search, setSearch] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState("")
-  const [dateFrom, setDateFrom] = React.useState("2025-10-01")
-  const [dateTo, setDateTo] = React.useState("2025-10-31")
+  const [dateFrom, setDateFrom] = React.useState("")
+  const [dateTo, setDateTo] = React.useState("")
   const [pageSize, setPageSize] = React.useState(8)
   const [currentPage, setCurrentPage] = React.useState(1)
 
@@ -344,8 +344,8 @@ export default function InvoiceListPage() {
   function handleReset() {
     setSearch("")
     setStatusFilter("")
-    setDateFrom("2025-10-01")
-    setDateTo("2025-10-31")
+    setDateFrom("")
+    setDateTo("")
     setCurrentPage(1)
     dispatch(fetchInvoices({ page: 1, limit: pageSize }))
   }
@@ -510,16 +510,20 @@ export default function InvoiceListPage() {
                     const id = inv.id || inv._id
                     const customerName =
                       inv.customerId?.companyName ||
+                      inv.customerId?.name ||
                       inv.customerId?.userId?.name ||
+                      inv.customer?.companyName ||
+                      inv.customer?.name ||
                       inv.customerName ||
                       "—"
                     const subNumber =
                       inv.subscriptionId?.subscriptionNumber ||
+                      inv.subscription?.subscriptionNumber ||
                       inv.subscriptionNumber ||
                       "—"
                     const total = inv.totalAmount ?? inv.total ?? 0
                     const paid = inv.paidAmount ?? inv.paid ?? 0
-                    const outstanding = total - paid
+                    const outstanding = inv.outstandingAmount ?? Math.max(0, total - paid)
 
                     return (
                       <tr
@@ -535,7 +539,7 @@ export default function InvoiceListPage() {
                             onClick={(e) => { e.stopPropagation(); navigate(`${basePath}/invoices/${id}`) }}
                             className="font-medium text-blue-600 hover:underline font-mono text-xs cursor-pointer"
                           >
-                            {inv.invoiceNumber || `INV-${String(idx + 1).padStart(4, "0")}`}
+                            {inv.invoiceNumber || (id ? `INV-${id.slice(-6).toUpperCase()}` : `INV-${String(idx + 1).padStart(4, "0")}`)}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 font-medium text-foreground">{customerName}</td>

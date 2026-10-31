@@ -6,6 +6,7 @@ import { fetchPortalOverview } from "@/redux/Slices/customerPortalSlice"
 import { fetchSubscriptions } from "@/redux/Slices/subscriptionSlice"
 import { fetchInvoices } from "@/redux/Slices/invoiceSlice"
 import { fetchPayments } from "@/redux/Slices/paymentSlice"
+import { useAuth } from "@/context/AuthContext"
 import { formatCurrency, formatDate } from "@/lib/formatters"
 import {
   Boxes,
@@ -18,14 +19,13 @@ import {
   Calendar,
   ExternalLink,
   ArrowRight,
-  TrendingUp,
-  BarChart2,
   PieChart,
   IndianRupee,
 } from "lucide-react"
 
 export default function CustomerDashboard() {
   const dispatch = useDispatch()
+  const { user } = useAuth()
   const { overview } = useSelector((state) => state.portal)
   const { subscriptions } = useSelector((state) => state.subscription)
   const { invoices } = useSelector((state) => state.invoice)
@@ -35,24 +35,72 @@ export default function CustomerDashboard() {
 
   React.useEffect(() => {
     dispatch(fetchPortalOverview())
-    dispatch(fetchSubscriptions({ limit: 5 }))
-    dispatch(fetchInvoices({ limit: 5 }))
-    dispatch(fetchPayments({ limit: 5 }))
+    dispatch(fetchSubscriptions({ limit: 10 }))
+    dispatch(fetchInvoices({ limit: 10 }))
+    dispatch(fetchPayments({ limit: 10 }))
   }, [dispatch])
 
-  const mySubs = (subscriptions || []).slice(0, 3)
-  const myInvs = (invoices || []).slice(0, 3)
+  const mySubs = subscriptions || []
+  const myInvs = invoices || []
+  const myPays = payments || []
+
+  // Dynamic subscription status counts
+  const totalSubs = mySubs.length
+  const activeSubs = mySubs.filter((s) => (s.status || "").toLowerCase() === "active").length
+  const pausedSubs = mySubs.filter((s) => (s.status || "").toLowerCase() === "paused").length
+  const closedSubs = mySubs.filter((s) => (s.status || "").toLowerCase() === "closed").length
+  const draftSubs = mySubs.filter(
+    (s) =>
+      (s.status || "").toLowerCase() === "draft" ||
+      (s.status || "").toLowerCase() === "quotation"
+  ).length
+
+  // Dynamic overdue invoices
+  const now = new Date()
+  const overdueInvs = myInvs.filter((inv) => {
+    const st = (inv.status || "").toLowerCase()
+    const isPastDue = inv.dueDate && new Date(inv.dueDate) < now
+    const hasBalance = (inv.amountDue ?? inv.outstandingAmount ?? 0) > 0
+    return st === "overdue" || (isPastDue && hasBalance && st !== "paid" && st !== "cancelled")
+  })
+
+  // Dynamic invoice bars
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const monthlyInvoices = React.useMemo(() => {
+    const buckets = {}
+    myInvs.forEach((inv) => {
+      const d = inv.issueDate || inv.invoiceDate || inv.createdAt
+      if (!d) return
+      const dateObj = new Date(d)
+      const m = monthNames[dateObj.getMonth()]
+      buckets[m] = (buckets[m] || 0) + (inv.totalAmount || inv.total || 0)
+    })
+    const last6Months = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const m = monthNames[d.getMonth()]
+      last6Months.push({ m, val: buckets[m] || 0 })
+    }
+    const maxVal = Math.max(...last6Months.map((b) => b.val), 1)
+    return last6Months.map((b) => ({
+      m: b.m,
+      val: b.val,
+      h: b.val > 0 ? `${Math.max(Math.round((b.val / maxVal) * 100), 10)}%` : "4px",
+      hl: b.val === maxVal && b.val > 0,
+    }))
+  }, [myInvs])
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* ── Welcome Banner ──────────────────────────────────────────────── */}
       <div className="rounded-2xl p-6 bg-gradient-to-r from-blue-50/80 via-white to-blue-50/40 dark:from-blue-950/20 dark:via-slate-900 dark:to-blue-950/10 border border-blue-100 dark:border-blue-900/30">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-          <span>Welcome back, Acme</span>
+          <span>Welcome back, {user?.name || user?.companyName || "there"}</span>
           <span>👋</span>
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Here's a quick overview of your account.
+          Here's a quick overview of your account and subscriptions.
         </p>
       </div>
 
@@ -67,10 +115,10 @@ export default function CustomerDashboard() {
               Active Subscriptions
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-              {overview?.activeSubscriptions ?? 2}
+              {overview?.activeSubscriptions ?? activeSubs}
             </div>
             <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">
-              +1 from last month
+              Live & active
             </div>
           </div>
         </div>
@@ -84,10 +132,12 @@ export default function CustomerDashboard() {
               Upcoming Renewals
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-              {overview?.upcomingRenewals ?? 1}
+              {overview?.upcomingRenewals ?? 0}
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              Next on Nov 01, 2026
+              {overview?.upcomingRenewalsDate
+                ? `Next: ${formatDate(overview.upcomingRenewalsDate)}`
+                : "Next 30 days"}
             </div>
           </div>
         </div>
@@ -101,10 +151,10 @@ export default function CustomerDashboard() {
               Outstanding Invoices
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-              {formatCurrency(overview?.outstandingInvoices ?? 6000000)}
+              {formatCurrency(overview?.outstandingInvoices ?? 0)}
             </div>
             <div className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
-              2 invoices pending
+              {overview?.outstandingCount ?? 0} invoices pending
             </div>
           </div>
         </div>
@@ -118,10 +168,12 @@ export default function CustomerDashboard() {
               Recent Payments
             </div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
-              {formatCurrency(overview?.recentPayments ?? 12000000)}
+              {formatCurrency(overview?.recentPayments ?? 0)}
             </div>
             <div className="text-[11px] text-slate-400 mt-0.5">
-              Last payment on Oct 20, 2026
+              {overview?.lastPaymentDate
+                ? `Last: ${formatDate(overview.lastPaymentDate)}`
+                : "Total settled"}
             </div>
           </div>
         </div>
@@ -142,7 +194,7 @@ export default function CustomerDashboard() {
             <div className="size-32 rounded-full border-[10px] border-emerald-500 border-t-amber-500 border-r-red-500 border-l-cyan-500 flex items-center justify-center">
               <div className="text-center">
                 <span className="text-2xl font-bold text-slate-900 dark:text-white block leading-none">
-                  5
+                  {totalSubs}
                 </span>
                 <span className="text-[9px] text-slate-400 uppercase font-semibold">Total</span>
               </div>
@@ -155,28 +207,36 @@ export default function CustomerDashboard() {
                 <span className="size-2 rounded-full bg-emerald-500" />
                 Active
               </span>
-              <span className="font-semibold text-slate-900 dark:text-white">2 (40%)</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {activeSubs} ({totalSubs ? Math.round((activeSubs / totalSubs) * 100) : 0}%)
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                 <span className="size-2 rounded-full bg-amber-500" />
                 Paused
               </span>
-              <span className="font-semibold text-slate-900 dark:text-white">1 (20%)</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {pausedSubs} ({totalSubs ? Math.round((pausedSubs / totalSubs) * 100) : 0}%)
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                 <span className="size-2 rounded-full bg-red-500" />
                 Closed
               </span>
-              <span className="font-semibold text-slate-900 dark:text-white">1 (20%)</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {closedSubs} ({totalSubs ? Math.round((closedSubs / totalSubs) * 100) : 0}%)
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
                 <span className="size-2 rounded-full bg-cyan-500" />
-                Expiring Soon
+                Draft / Quotation
               </span>
-              <span className="font-semibold text-slate-900 dark:text-white">1 (20%)</span>
+              <span className="font-semibold text-slate-900 dark:text-white">
+                {draftSubs} ({totalSubs ? Math.round((draftSubs / totalSubs) * 100) : 0}%)
+              </span>
             </div>
           </div>
         </div>
@@ -187,35 +247,14 @@ export default function CustomerDashboard() {
             <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Invoice Overview
             </h3>
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-[10px]">
-              {["Daily", "Monthly", "Quarterly", "Yearly"].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPeriod(p)}
-                  className={`px-2 py-0.5 rounded-md font-medium transition ${
-                    period === p
-                      ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
-                      : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
+            <span className="text-[11px] text-slate-400">Billed Volume</span>
           </div>
 
           <div className="h-44 mt-6 flex items-end justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2 relative">
-            {[
-              { m: "Jan", h: "35%" },
-              { m: "Feb", h: "45%" },
-              { m: "Mar", h: "55%" },
-              { m: "Apr", h: "60%" },
-              { m: "May", h: "75%" },
-              { m: "Jun", h: "90%", hl: true },
-            ].map((bar, i) => (
+            {monthlyInvoices.map((bar, i) => (
               <div key={i} className="flex-1 flex flex-col items-center justify-end h-full">
-                {bar.hl && (
-                  <span className="text-[10px] font-bold text-blue-600 mb-1">₹ 2,48,000</span>
+                {bar.hl && bar.val > 0 && (
+                  <span className="text-[10px] font-bold text-blue-600 mb-1">{formatCurrency(bar.val)}</span>
                 )}
                 <div
                   style={{ height: bar.h }}
@@ -229,11 +268,8 @@ export default function CustomerDashboard() {
           </div>
 
           <div className="flex justify-between text-[11px] text-slate-400 pt-3">
-            <span>₹ 0</span>
-            <span>₹ 1,00,000</span>
-            <span>₹ 2,00,000</span>
-            <span>₹ 3,00,000</span>
-            <span>₹ 4,00,000</span>
+            <span>Recent 6 Months</span>
+            <span>Total Invoices: {myInvs.length}</span>
           </div>
         </div>
 
@@ -247,34 +283,46 @@ export default function CustomerDashboard() {
           </div>
 
           <div className="space-y-3">
-            {[
-              { ref: "PAY-2026-001", amt: "₹ 50,000", date: "Oct 20, 2026" },
-              { ref: "PAY-2026-0005", amt: "₹ 25,000", date: "Oct 12, 2026" },
-              { ref: "PAY-2026-0004", amt: "₹ 40,000", date: "Oct 05, 2026" },
-              { ref: "PAY-2026-0003", amt: "₹ 15,000", date: "Sep 20, 2026" },
-            ].map((pay, i) => (
-              <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
-                    <CheckCircle2 className="size-4" />
+            {myPays.length > 0 ? (
+              myPays.slice(0, 4).map((pay) => (
+                <div key={pay._id || pay.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <div className="flex items-center gap-2.5">
+                    <div className="size-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
+                      <CheckCircle2 className="size-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                        {pay.paymentReference || pay.reference || "PAY"}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        {formatDate(pay.paymentDate || pay.createdAt)}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-semibold text-xs text-slate-900 dark:text-white block">
-                      {pay.ref}
-                    </span>
-                    <span className="text-[10px] text-slate-400">{pay.date}</span>
-                  </div>
+                  <span className="text-xs font-bold text-emerald-600">
+                    +{formatCurrency(pay.amount)}
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                  + {pay.amt}
-                </span>
+              ))
+            ) : (
+              <div className="text-xs text-slate-400 text-center py-6">
+                No payments recorded yet
               </div>
-            ))}
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+            <Link
+              to="/portal/payments"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            >
+              All payments <ArrowRight className="size-3" />
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* ── 3 Bottom Tables ──────────────────────────────────────────────── */}
+      {/* ── 3 Bottom Data Tables ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Table 1: Recent Subscriptions */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
@@ -296,29 +344,43 @@ export default function CustomerDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {[
-                { plan: "Business Plan", start: "Oct 01, 2026", exp: "Oct 01, 2027", st: "Active" },
-                { plan: "Enterprise Plan", start: "Sep 15, 2026", exp: "Sep 15, 2027", st: "Active" },
-                { plan: "Starter Plan", start: "Aug 10, 2026", exp: "Aug 10, 2027", st: "Paused" },
-              ].map((sub, i) => (
-                <tr key={i}>
-                  <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
-                    {sub.plan}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-500">{sub.start}</td>
-                  <td className="py-2.5 px-3 text-slate-500">{sub.exp}</td>
-                  <td className="py-2.5 px-3">
-                    <span
-                      className={`inline-flex items-center gap-1 font-medium ${
-                        sub.st === "Active" ? "text-emerald-600" : "text-amber-600"
-                      }`}
-                    >
-                      <span className={`size-1.5 rounded-full ${sub.st === "Active" ? "bg-emerald-500" : "bg-amber-500"}`} />
-                      {sub.st}
-                    </span>
+              {mySubs.length > 0 ? (
+                mySubs.slice(0, 4).map((sub) => {
+                  const planName = sub.planSnapshot?.name || sub.planName || sub.planId?.name || "Subscription"
+                  const st = sub.status || "Active"
+                  return (
+                    <tr key={sub._id || sub.id}>
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                        <Link to={`/portal/subscriptions/${sub._id || sub.id}`} className="hover:underline">
+                          {planName}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-500">{formatDate(sub.startDate)}</td>
+                      <td className="py-2.5 px-3 text-slate-500">{formatDate(sub.expiryDate)}</td>
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 font-medium ${
+                            st.toLowerCase() === "active" ? "text-emerald-600" : "text-amber-600"
+                          }`}
+                        >
+                          <span
+                            className={`size-1.5 rounded-full ${
+                              st.toLowerCase() === "active" ? "bg-emerald-500" : "bg-amber-500"
+                            }`}
+                          />
+                          {st}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-slate-400">
+                    No subscriptions found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -343,32 +405,43 @@ export default function CustomerDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {[
-                { no: "INV-2026-003", due: "Nov 05, 2026", amt: "₹ 25,000", st: "Paid", color: "emerald" },
-                { no: "INV-2026-002", due: "Oct 15, 2026", amt: "₹ 1,20,000", st: "Overdue", color: "red" },
-                { no: "INV-2026-001", due: "Oct 31, 2026", amt: "₹ 50,000", st: "Confirmed", color: "blue" },
-              ].map((inv, i) => (
-                <tr key={i}>
-                  <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
-                    {inv.no}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-500">{inv.due}</td>
-                  <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-white">{inv.amt}</td>
-                  <td className="py-2.5 px-3">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        inv.color === "emerald"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : inv.color === "red"
-                          ? "bg-red-50 text-red-700"
-                          : "bg-blue-50 text-blue-700"
-                      }`}
-                    >
-                      {inv.st}
-                    </span>
+              {myInvs.length > 0 ? (
+                myInvs.slice(0, 4).map((inv) => {
+                  const st = inv.status || "Draft"
+                  return (
+                    <tr key={inv._id || inv.id}>
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                        <Link to={`/portal/invoices/${inv._id || inv.id}`} className="hover:underline">
+                          {inv.invoiceNumber}
+                        </Link>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-500">{formatDate(inv.dueDate)}</td>
+                      <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-white">
+                        {formatCurrency(inv.totalAmount || inv.total || 0)}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                            st.toLowerCase() === "paid"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                              : st.toLowerCase() === "overdue"
+                              ? "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400"
+                              : "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
+                          }`}
+                        >
+                          {st}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={4} className="py-6 text-center text-slate-400">
+                    No invoices found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -392,20 +465,27 @@ export default function CustomerDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {[
-                { no: "INV-2026-002", due: "Oct 15, 2026", out: "₹ 60,000" },
-                { no: "INV-2026-009", due: "Sep 28, 2026", out: "₹ 25,000" },
-              ].map((row, i) => (
-                <tr key={i}>
-                  <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
-                    {row.no}
-                  </td>
-                  <td className="py-2.5 px-3 text-slate-500">{row.due}</td>
-                  <td className="py-2.5 px-3 font-bold text-red-600 dark:text-red-400">
-                    {row.out}
+              {overdueInvs.length > 0 ? (
+                overdueInvs.slice(0, 4).map((row) => (
+                  <tr key={row._id || row.id}>
+                    <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">
+                      <Link to={`/portal/invoices/${row._id || row.id}`} className="hover:underline">
+                        {row.invoiceNumber}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 px-3 text-slate-500">{formatDate(row.dueDate)}</td>
+                    <td className="py-2.5 px-3 font-bold text-red-600 dark:text-red-400">
+                      {formatCurrency(row.amountDue ?? row.outstandingAmount ?? 0)}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="py-6 text-center text-slate-400">
+                    No overdue invoices
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -413,4 +493,3 @@ export default function CustomerDashboard() {
     </div>
   )
 }
-

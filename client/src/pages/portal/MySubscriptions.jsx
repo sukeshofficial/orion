@@ -140,11 +140,12 @@ export default function MySubscriptions() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {mySubs.map((sub, idx) => {
                   const sId = sub._id || sub.id
-                  const status = (sub.status || "Active").toLowerCase()
-                  const planName = sub.plan?.name || sub.planName || "Business Plan"
+                  const status = (sub.status || "active").toLowerCase()
+                  const planName = sub.plan?.name || sub.planName || "Subscription Plan"
+                  const subNum = sub.subscriptionNumber || (sId ? `SUB-${sId.slice(-6).toUpperCase()}` : "—")
 
                   return (
-                    <tr key={sId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                    <tr key={sId || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
                       <td className="py-3.5 px-4 text-slate-400">{idx + 1}</td>
                       <td className="py-3.5 px-4">
                         <Link
@@ -154,16 +155,16 @@ export default function MySubscriptions() {
                           {planName}
                         </Link>
                         <span className="text-[10px] text-slate-400 block mt-0.5">
-                          {sub.subscriptionNumber || `SUB-00${12 - idx}`}
+                          {subNum}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                        {formatDate(sub.startDate || "2026-10-01")}
+                        {sub.startDate ? formatDate(sub.startDate) : "—"}
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                        {formatDate(sub.expiryDate || "2027-10-01")}
+                        {sub.expiryDate ? formatDate(sub.expiryDate) : "—"}
                       </td>
-                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
+                      <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400 capitalize">
                         {sub.billingInterval || "Monthly"}
                       </td>
                       <td className="py-3.5 px-4">

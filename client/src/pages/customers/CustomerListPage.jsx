@@ -409,8 +409,8 @@ export default function CustomerListPage() {
                 {!loading &&
                   customers.map((customer, idx) => {
                     const rowNumber = (pagination.page - 1) * pagination.limit + idx + 1
-                    const name = customer.userId?.name ?? "—"
-                    const email = customer.userId?.email ?? "—"
+                    const name = customer.userId?.name || customer.name || customer.companyName || "—"
+                    const email = customer.userId?.email || customer.email || "—"
                     return (
                       <tr
                         key={customer.id}

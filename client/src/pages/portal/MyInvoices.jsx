@@ -134,14 +134,14 @@ export default function MyInvoices() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {myInvoices.map((inv, idx) => {
                   const iId = inv._id || inv.id
-                  const invNum = inv.invoiceNumber || inv.number || `INV-2026-00${idx + 1}`
-                  const total = inv.totalAmount || inv.total || 5000000
-                  const paid = inv.paidAmount || 0
-                  const outstanding = Math.max(0, total - paid)
-                  const status = (inv.status || "Paid").toLowerCase()
+                  const invNum = inv.invoiceNumber || inv.number || (iId ? `INV-${iId.slice(-6).toUpperCase()}` : `INV-${idx + 1}`)
+                  const total = inv.totalAmount ?? inv.total ?? 0
+                  const paid = inv.paidAmount ?? 0
+                  const outstanding = inv.outstandingAmount ?? Math.max(0, total - paid)
+                  const status = (inv.status || "draft").toLowerCase()
 
                   return (
-                    <tr key={iId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                    <tr key={iId || idx} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
                       <td className="py-3.5 px-4 text-slate-400">{idx + 1}</td>
                       <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white">
                         <Link
@@ -152,10 +152,10 @@ export default function MyInvoices() {
                         </Link>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                        {formatDate(inv.invoiceDate || "2026-10-01")}
+                        {inv.invoiceDate ? formatDate(inv.invoiceDate) : "—"}
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 dark:text-slate-400">
-                        {formatDate(inv.dueDate || "2026-10-31")}
+                        {inv.dueDate ? formatDate(inv.dueDate) : "—"}
                       </td>
                       <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
                         {formatCurrency(total)}

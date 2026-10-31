@@ -8,14 +8,15 @@ export const fetchPaymentStats = createAsyncThunk(
     try {
       const res = await paymentService.fetchPayments({ limit: 100 });
       const list = res.payments || [];
+      const totalPagination = res.pagination?.total ?? list.length;
       const totalAmountReceived = list.reduce((sum, p) => sum + (p.amount || 0), 0);
 
       return {
-        totalPayments: list.length || 36,
-        totalAmountReceived: totalAmountReceived || 48200000,
-        pendingAmount: 12600000,
-        fullyPaidInvoices: 18,
-        partiallyPaid: 12,
+        totalPayments: totalPagination,
+        totalAmountReceived,
+        pendingAmount: 0,
+        fullyPaidInvoices: 0,
+        partiallyPaid: 0,
         failedOrReversed: 0,
       };
     } catch (error) {
@@ -67,7 +68,7 @@ export const fetchInvoicePayments = createAsyncThunk(
   "payment/fetchInvoicePayments",
   async (invoiceId, { rejectWithValue }) => {
     try {
-      return await paymentService.fetchInvoicePayments(invoiceId);
+      return await paymentService.fetchPaymentsForInvoice(invoiceId);
     } catch (error) {
       return rejectWithValue(
         error?.response?.data?.message || error.message || "Failed to fetch invoice payments"
@@ -81,11 +82,11 @@ const initialState = {
   selectedPayment: null,
   invoicePayments: [],
   stats: {
-    totalPayments: 36,
-    totalAmountReceived: 48200000,
-    pendingAmount: 12600000,
-    fullyPaidInvoices: 18,
-    partiallyPaid: 12,
+    totalPayments: 0,
+    totalAmountReceived: 0,
+    pendingAmount: 0,
+    fullyPaidInvoices: 0,
+    partiallyPaid: 0,
     failedOrReversed: 0,
   },
   pagination: { total: 0, page: 1, limit: 10 },

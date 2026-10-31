@@ -71,21 +71,20 @@ export default function AdminAnalyticsDashboard() {
     dispatch(resetAnalyticsFilters())
   }
 
-  // Monthly revenue mock bars
-  const revenueBars = [
-    { label: "Jan", height: "30%", value: "₹ 1.2L" },
-    { label: "Feb", height: "40%", value: "₹ 1.6L" },
-    { label: "Mar", height: "50%", value: "₹ 2.0L" },
-    { label: "Apr", height: "60%", value: "₹ 2.4L" },
-    { label: "May", height: "52%", value: "₹ 2.1L" },
-    { label: "Jun", height: "68%", value: "₹ 2.7L" },
-    { label: "Jul", height: "78%", value: "₹ 3.1L" },
-    { label: "Aug", height: "72%", value: "₹ 2.9L" },
-    { label: "Sep", height: "88%", value: "₹ 2,48,000", highlight: true },
-    { label: "Oct", height: "80%", value: "₹ 3.2L" },
-    { label: "Nov", height: "90%", value: "₹ 3.6L" },
-    { label: "Dec", height: "100%", value: "₹ 4.0L" },
-  ]
+  // Compute revenue bars dynamically from backend revenue analytics
+  const revenueData = revenue?.data || []
+  const maxRevenue = Math.max(...revenueData.map((d) => d.totalRevenue || 0), 1)
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+  const revenueBars = revenueData.map((d) => {
+    const pct = Math.round(((d.totalRevenue || 0) / maxRevenue) * 100)
+    const label = d.month ? monthNames[d.month - 1] || d.period : d.period || "Period"
+    return {
+      label,
+      height: `${Math.max(pct, 6)}%`,
+      value: formatCurrency(d.totalRevenue || 0),
+      highlight: pct >= 80,
+    }
+  })
 
   // Overdue invoices filtered list
   const overdueInvoices = (invoices || []).filter(
@@ -180,11 +179,11 @@ export default function AdminAnalyticsDashboard() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
-            {overview?.activeSubscriptions ?? 124}
+            {overview?.activeSubscriptions ?? 0}
           </div>
           <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
             <ArrowUpRight className="size-3.5" />
-            <span>↑ 12% from last month</span>
+            <span>Active accounts</span>
           </div>
         </div>
 
@@ -198,11 +197,11 @@ export default function AdminAnalyticsDashboard() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
-            {formatCurrency(overview?.revenueCollected ?? 124800000)}
+            {formatCurrency(overview?.totalRevenueCollected ?? overview?.revenueCollected ?? 0)}
           </div>
           <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
             <ArrowUpRight className="size-3.5" />
-            <span>↑ 18% from last month</span>
+            <span>Completed payments</span>
           </div>
         </div>
 
@@ -216,11 +215,11 @@ export default function AdminAnalyticsDashboard() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
-            {formatCurrency(overview?.outstandingAmount ?? 32450000)}
+            {formatCurrency(overview?.outstandingAmounts ?? overview?.outstandingAmount ?? 0)}
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400 mt-1 font-medium">
-            <ArrowDownRight className="size-3.5" />
-            <span>↓ 8% from last month</span>
+          <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+            <Clock className="size-3.5" />
+            <span>Unpaid balances</span>
           </div>
         </div>
 
@@ -234,11 +233,13 @@ export default function AdminAnalyticsDashboard() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
-            {overview?.overdueInvoices ?? 18}
+            {typeof overview?.overdueInvoices === "object"
+              ? (overview?.overdueInvoices?.count ?? 0)
+              : (overview?.overdueCount ?? overview?.overdueInvoices ?? 0)}
           </div>
           <div className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400 mt-1 font-medium">
-            <ArrowDownRight className="size-3.5" />
-            <span>↓ 5% from last month</span>
+            <AlertTriangle className="size-3.5" />
+            <span>Past due date</span>
           </div>
         </div>
 
@@ -252,11 +253,11 @@ export default function AdminAnalyticsDashboard() {
             </div>
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5">
-            {overview?.upcomingRenewals ?? 27}
+            {overview?.upcomingRenewals ?? 0}
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
-            <ArrowUpRight className="size-3.5" />
-            <span>↑ 20% from last month</span>
+          <div className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 mt-1 font-medium">
+            <RefreshCw className="size-3.5" />
+            <span>Next 30 days</span>
           </div>
         </div>
       </div>
@@ -333,7 +334,7 @@ export default function AdminAnalyticsDashboard() {
                 <div className="size-28 rounded-full border-8 border-emerald-500 border-t-amber-500 border-r-red-500 flex items-center justify-center relative">
                   <div className="text-center">
                     <span className="text-lg font-bold text-slate-900 dark:text-white block leading-none">
-                      124
+                      {subAnalytics?.total ?? 0}
                     </span>
                     <span className="text-[9px] text-slate-400 uppercase">Total</span>
                   </div>
@@ -344,21 +345,27 @@ export default function AdminAnalyticsDashboard() {
                       <span className="size-2 rounded-full bg-emerald-500" />
                       <span className="text-slate-600 dark:text-slate-400">Active</span>
                     </div>
-                    <span className="font-semibold text-slate-900 dark:text-white">89 (72%)</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {subAnalytics?.activeCount ?? 0} ({subAnalytics?.total ? Math.round(((subAnalytics.activeCount ?? 0) / subAnalytics.total) * 100) : 0}%)
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-amber-500" />
                       <span className="text-slate-600 dark:text-slate-400">Paused</span>
                     </div>
-                    <span className="font-semibold text-slate-900 dark:text-white">18 (14%)</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {subAnalytics?.pausedCount ?? 0} ({subAnalytics?.total ? Math.round(((subAnalytics.pausedCount ?? 0) / subAnalytics.total) * 100) : 0}%)
+                    </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-red-500" />
                       <span className="text-slate-600 dark:text-slate-400">Closed</span>
                     </div>
-                    <span className="font-semibold text-slate-900 dark:text-white">17 (14%)</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {subAnalytics?.closedCount ?? 0} ({subAnalytics?.total ? Math.round(((subAnalytics.closedCount ?? 0) / subAnalytics.total) * 100) : 0}%)
+                    </span>
                   </div>
                 </div>
               </div>
@@ -368,28 +375,24 @@ export default function AdminAnalyticsDashboard() {
                 <div className="size-28 rounded-full border-8 border-blue-500 border-t-purple-500 border-r-cyan-500 border-l-pink-500 flex items-center justify-center relative">
                   <div className="text-center">
                     <span className="text-lg font-bold text-slate-900 dark:text-white block leading-none">
-                      124
+                      {subAnalytics?.total ?? 0}
                     </span>
                     <span className="text-[9px] text-slate-400 uppercase">Total</span>
                   </div>
                 </div>
                 <div className="mt-4 space-y-1 w-full text-[11px]">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 dark:text-slate-400 truncate">Business</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">48 (39%)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 dark:text-slate-400 truncate">Enterprise</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">32 (26%)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 dark:text-slate-400 truncate">Starter</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">24 (19%)</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-600 dark:text-slate-400 truncate">Support</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">20 (16%)</span>
-                  </div>
+                  {subAnalytics?.byPlan && subAnalytics.byPlan.length > 0 ? (
+                    subAnalytics.byPlan.slice(0, 4).map((bp, i) => (
+                      <div key={bp._id || bp.planId || i} className="flex items-center justify-between">
+                        <span className="text-slate-600 dark:text-slate-400 truncate">{bp.planName || "Plan"}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">
+                          {bp.count} ({subAnalytics?.total ? Math.round((bp.count / subAnalytics.total) * 100) : 0}%)
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-slate-400 text-center py-2">No plans active</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -413,7 +416,7 @@ export default function AdminAnalyticsDashboard() {
               <div className="size-28 rounded-full border-8 border-emerald-500 border-t-blue-500 border-r-slate-400 border-l-red-500 flex items-center justify-center relative">
                 <div className="text-center">
                   <span className="text-lg font-bold text-slate-900 dark:text-white block leading-none">
-                    48
+                    {invAnalytics?.total ?? 0}
                   </span>
                   <span className="text-[9px] text-slate-400 uppercase">Total</span>
                 </div>
@@ -425,28 +428,36 @@ export default function AdminAnalyticsDashboard() {
                     <span className="size-2 rounded-full bg-slate-400" />
                     <span className="text-slate-600 dark:text-slate-400">Draft</span>
                   </div>
-                  <span className="font-semibold text-slate-900 dark:text-white">6 (12%)</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {invAnalytics?.draftCount ?? 0} ({invAnalytics?.total ? Math.round(((invAnalytics.draftCount ?? 0) / invAnalytics.total) * 100) : 0}%)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-blue-500" />
                     <span className="text-slate-600 dark:text-slate-400">Confirmed</span>
                   </div>
-                  <span className="font-semibold text-slate-900 dark:text-white">18 (38%)</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {invAnalytics?.confirmedCount ?? 0} ({invAnalytics?.total ? Math.round(((invAnalytics.confirmedCount ?? 0) / invAnalytics.total) * 100) : 0}%)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-emerald-500" />
                     <span className="text-slate-600 dark:text-slate-400">Paid</span>
                   </div>
-                  <span className="font-semibold text-slate-900 dark:text-white">16 (33%)</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {invAnalytics?.paidCount ?? 0} ({invAnalytics?.total ? Math.round(((invAnalytics.paidCount ?? 0) / invAnalytics.total) * 100) : 0}%)
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-red-500" />
                     <span className="text-slate-600 dark:text-slate-400">Overdue</span>
                   </div>
-                  <span className="font-semibold text-slate-900 dark:text-white">8 (17%)</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {invAnalytics?.overdueCount ?? 0} ({invAnalytics?.total ? Math.round(((invAnalytics.overdueCount ?? 0) / invAnalytics.total) * 100) : 0}%)
+                  </span>
                 </div>
               </div>
             </div>

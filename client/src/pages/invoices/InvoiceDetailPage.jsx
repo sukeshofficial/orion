@@ -8,6 +8,7 @@ import {
   cancelInvoice,
   sendInvoice,
 } from "@/redux/Slices/invoiceSlice"
+import { fetchInvoicePayments } from "@/redux/Slices/paymentSlice"
 import { formatCurrency, formatDate } from "@/lib/formatters"
 import InvoiceActionModals from "@/components/invoices/InvoiceActionModals"
 import {
@@ -46,6 +47,8 @@ export default function InvoiceDetailPage() {
     error,
   } = useSelector((state) => state.invoice)
 
+  const { invoicePayments } = useSelector((state) => state.payment)
+
   const [activeTab, setActiveTab] = React.useState("overview")
   const [showMoreMenu, setShowMoreMenu] = React.useState(false)
 
@@ -59,6 +62,7 @@ export default function InvoiceDetailPage() {
   React.useEffect(() => {
     if (id) {
       dispatch(fetchInvoiceById(id))
+      dispatch(fetchInvoicePayments(id))
     }
   }, [dispatch, id])
 
@@ -91,47 +95,42 @@ export default function InvoiceDetailPage() {
   }
 
   // Normalize data fields
-  const invNumber = invoice.invoiceNumber || invoice.number || `INV-${(invoice._id || invoice.id || "").slice(-6).toUpperCase()}`
-  const customerName = invoice.customer?.name || invoice.customerName || "Acme Corp"
-  const customerEmail = invoice.customer?.email || invoice.customerEmail || "acme@company.com"
-  const customerPhone = invoice.customer?.phone || "+1 555 010 1234"
-  const customerAddress = invoice.customer?.address
-    ? `${invoice.customer.address.street || ""}, ${invoice.customer.address.city || ""}, ${invoice.customer.address.country || ""}`
-    : "123 Business Park Drive, San Francisco, CA 94107, United States"
+  const invNumber = invoice.invoiceNumber || invoice.number || (invoice._id ? `INV-${invoice._id.slice(-6).toUpperCase()}` : "Invoice")
+  const customerName =
+    invoice.customerId?.companyName ||
+    invoice.customerId?.name ||
+    invoice.customerId?.userId?.name ||
+    invoice.customer?.companyName ||
+    invoice.customer?.name ||
+    invoice.customerName ||
+    "—"
+  const customerEmail =
+    invoice.customerId?.userId?.email ||
+    invoice.customer?.email ||
+    invoice.customerEmail ||
+    "—"
+  const customerPhone = invoice.customerId?.phone || invoice.customer?.phone || "—"
+  const cAddr = invoice.customerId?.billingAddress || invoice.customer?.address || invoice.customer?.billingAddress
+  const customerAddress = typeof cAddr === "string" 
+    ? cAddr 
+    : cAddr 
+      ? [cAddr.street, cAddr.city, cAddr.state, cAddr.country].filter(Boolean).join(", ") 
+      : "—"
 
-  const subNumber = invoice.subscription?.subscriptionNumber || invoice.subscriptionNumber || "SUB-0012"
-  const planName = invoice.subscription?.plan?.name || invoice.planName || "Business Plan"
+  const subNumber = invoice.subscriptionId?.subscriptionNumber || invoice.subscription?.subscriptionNumber || invoice.subscriptionNumber || "—"
+  const planName = invoice.subscriptionId?.plan?.name || invoice.subscription?.plan?.name || invoice.planName || "—"
   const status = (invoice.status || "Draft").toLowerCase()
 
-  const issueDate = invoice.invoiceDate || invoice.createdAt || "2026-10-01"
-  const dueDate = invoice.dueDate || "2026-10-31"
-  const totalAmount = invoice.totalAmount ?? invoice.total ?? 5000000
+  const issueDate = invoice.invoiceDate || invoice.createdAt
+  const dueDate = invoice.dueDate
+  const totalAmount = invoice.totalAmount ?? invoice.total ?? 0
   const paidAmount = invoice.paidAmount ?? (status === "paid" ? totalAmount : 0)
-  const outstanding = Math.max(0, totalAmount - paidAmount)
+  const outstanding = invoice.outstandingAmount ?? Math.max(0, totalAmount - paidAmount)
 
-  const items = invoice.items || invoice.lines || [
-    {
-      _id: "1",
-      productName: "Odoo ERP License",
-      variantName: "Standard",
-      quantity: 10,
-      unitPrice: 400000,
-      taxRate: 18,
-      total: 4000000,
-    },
-    {
-      _id: "2",
-      productName: "Technical Support Service",
-      variantName: "—",
-      quantity: 1,
-      unitPrice: 847500,
-      taxRate: 18,
-      total: 1000000,
-    },
-  ]
+  const items = invoice.items || invoice.lines || []
 
-  const subtotal = invoice.subtotal ?? Math.round(totalAmount * 0.8475)
-  const taxAmount = invoice.taxAmount ?? (totalAmount - subtotal)
+  const subtotal = invoice.subtotal ?? Math.max(0, totalAmount - (invoice.taxAmount || 0))
+  const taxAmount = invoice.taxAmount ?? 0
 
   // Status badge style helper
   const getStatusBadge = (st) => {
@@ -423,46 +422,52 @@ export default function InvoiceDetailPage() {
               <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4">
                 Invoice Items
               </h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
-                  <thead className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-medium">
-                    <tr>
-                      <th className="pb-2.5">#</th>
-                      <th className="pb-2.5">Product</th>
-                      <th className="pb-2.5">Variant</th>
-                      <th className="pb-2.5 text-right">Quantity</th>
-                      <th className="pb-2.5 text-right">Unit Price</th>
-                      <th className="pb-2.5 text-right">Tax</th>
-                      <th className="pb-2.5 text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {items.map((item, idx) => (
-                      <tr key={item._id || idx}>
-                        <td className="py-3 text-slate-400">{idx + 1}</td>
-                        <td className="py-3 font-medium text-slate-900 dark:text-white">
-                          {item.productName || item.product?.name || item.name || "Item"}
-                        </td>
-                        <td className="py-3 text-slate-500">
-                          {item.variantName || item.variant?.name || "—"}
-                        </td>
-                        <td className="py-3 text-right font-medium text-slate-800 dark:text-slate-200">
-                          {item.quantity || 1}
-                        </td>
-                        <td className="py-3 text-right text-slate-600 dark:text-slate-400">
-                          {formatCurrency(item.unitPrice || 0)}
-                        </td>
-                        <td className="py-3 text-right text-slate-500">
-                          {item.taxRate ? `${item.taxRate}%` : "18%"}
-                        </td>
-                        <td className="py-3 text-right font-semibold text-slate-900 dark:text-white">
-                          {formatCurrency(item.total || (item.quantity || 1) * (item.unitPrice || 0))}
-                        </td>
+              {items.length === 0 ? (
+                <div className="text-xs text-slate-400 py-6 text-center">
+                  No line items found on this invoice.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="border-b border-slate-100 dark:border-slate-800 text-slate-400 font-medium">
+                      <tr>
+                        <th className="pb-2.5">#</th>
+                        <th className="pb-2.5">Product</th>
+                        <th className="pb-2.5">Variant</th>
+                        <th className="pb-2.5 text-right">Quantity</th>
+                        <th className="pb-2.5 text-right">Unit Price</th>
+                        <th className="pb-2.5 text-right">Tax</th>
+                        <th className="pb-2.5 text-right">Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                      {items.map((item, idx) => (
+                        <tr key={item._id || idx}>
+                          <td className="py-3 text-slate-400">{idx + 1}</td>
+                          <td className="py-3 font-medium text-slate-900 dark:text-white">
+                            {item.productName || item.product?.name || item.name || "Item"}
+                          </td>
+                          <td className="py-3 text-slate-500">
+                            {item.variantName || item.variant?.name || "—"}
+                          </td>
+                          <td className="py-3 text-right font-medium text-slate-800 dark:text-slate-200">
+                            {item.quantity || 1}
+                          </td>
+                          <td className="py-3 text-right text-slate-600 dark:text-slate-400">
+                            {formatCurrency(item.unitPrice || 0)}
+                          </td>
+                          <td className="py-3 text-right text-slate-500">
+                            {item.taxRate ? `${item.taxRate}%` : "—"}
+                          </td>
+                          <td className="py-3 text-right font-semibold text-slate-900 dark:text-white">
+                            {formatCurrency(item.total || (item.quantity || 1) * (item.unitPrice || 0))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
 
@@ -545,35 +550,29 @@ export default function InvoiceDetailPage() {
                 Timeline
               </h2>
               <div className="relative pl-6 space-y-5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-                <div className="relative">
-                  <div className="size-4 rounded-full bg-emerald-500 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Invoice marked as Paid
+                {status === "paid" && (
+                  <div className="relative">
+                    <div className="size-4 rounded-full bg-emerald-500 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
+                    <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                      Invoice marked as Paid
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {formatDate(invoice.updatedAt || issueDate)} · Payment of {formatCurrency(paidAmount)} settled
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    {formatDate(dueDate)} · Payment of {formatCurrency(totalAmount)} received
-                  </div>
-                </div>
+                )}
 
-                <div className="relative">
-                  <div className="size-4 rounded-full bg-blue-500 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Invoice sent to customer
+                {(status === "confirmed" || status === "paid") && (
+                  <div className="relative">
+                    <div className="size-4 rounded-full bg-blue-500 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
+                    <div className="text-xs font-semibold text-slate-900 dark:text-white">
+                      Invoice confirmed
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      {formatDate(issueDate)} · Confirmed and ready for payment
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    {formatDate(issueDate)} · Invoice email delivered to {customerEmail}
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <div className="size-4 rounded-full bg-blue-400 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                    Invoice confirmed
-                  </div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    {formatDate(issueDate)} · Marked as confirmed by Staff User
-                  </div>
-                </div>
+                )}
 
                 <div className="relative">
                   <div className="size-4 rounded-full bg-slate-400 absolute -left-6 top-0.5 ring-4 ring-white dark:ring-slate-900" />
@@ -581,7 +580,7 @@ export default function InvoiceDetailPage() {
                     Invoice created
                   </div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
-                    {formatDate(issueDate)} · Generated from subscription {subNumber}
+                    {formatDate(issueDate)} {subNumber !== "—" ? `· Generated from subscription ${subNumber}` : ""}
                   </div>
                 </div>
               </div>
@@ -593,82 +592,96 @@ export default function InvoiceDetailPage() {
       {/* ── TAB 2: ITEMS ─────────────────────────────────────────────────── */}
       {activeTab === "items" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold uppercase">
-                <tr>
-                  <th className="py-3">#</th>
-                  <th className="py-3">Product Name</th>
-                  <th className="py-3">Variant</th>
-                  <th className="py-3 text-right">Quantity</th>
-                  <th className="py-3 text-right">Unit Price</th>
-                  <th className="py-3 text-right">Tax Rate</th>
-                  <th className="py-3 text-right">Line Total</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {items.map((item, idx) => (
-                  <tr key={item._id || idx}>
-                    <td className="py-3.5 text-slate-400">{idx + 1}</td>
-                    <td className="py-3.5 font-semibold text-slate-900 dark:text-white">
-                      {item.productName || item.product?.name || item.name || "Item"}
-                    </td>
-                    <td className="py-3.5 text-slate-500">
-                      {item.variantName || item.variant?.name || "—"}
-                    </td>
-                    <td className="py-3.5 text-right font-medium text-slate-800 dark:text-slate-200">
-                      {item.quantity || 1}
-                    </td>
-                    <td className="py-3.5 text-right text-slate-600 dark:text-slate-400">
-                      {formatCurrency(item.unitPrice || 0)}
-                    </td>
-                    <td className="py-3.5 text-right text-slate-500">
-                      {item.taxRate ? `${item.taxRate}%` : "18%"}
-                    </td>
-                    <td className="py-3.5 text-right font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(item.total || (item.quantity || 1) * (item.unitPrice || 0))}
-                    </td>
+          {items.length === 0 ? (
+            <div className="py-12 text-center text-xs text-slate-400">
+              No line items associated with this invoice.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold uppercase">
+                  <tr>
+                    <th className="py-3">#</th>
+                    <th className="py-3">Product Name</th>
+                    <th className="py-3">Variant</th>
+                    <th className="py-3 text-right">Quantity</th>
+                    <th className="py-3 text-right">Unit Price</th>
+                    <th className="py-3 text-right">Tax Rate</th>
+                    <th className="py-3 text-right">Line Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {items.map((item, idx) => (
+                    <tr key={item._id || idx}>
+                      <td className="py-3.5 text-slate-400">{idx + 1}</td>
+                      <td className="py-3.5 font-semibold text-slate-900 dark:text-white">
+                        {item.productName || item.product?.name || item.name || "Item"}
+                      </td>
+                      <td className="py-3.5 text-slate-500">
+                        {item.variantName || item.variant?.name || "—"}
+                      </td>
+                      <td className="py-3.5 text-right font-medium text-slate-800 dark:text-slate-200">
+                        {item.quantity || 1}
+                      </td>
+                      <td className="py-3.5 text-right text-slate-600 dark:text-slate-400">
+                        {formatCurrency(item.unitPrice || 0)}
+                      </td>
+                      <td className="py-3.5 text-right text-slate-500">
+                        {item.taxRate ? `${item.taxRate}%` : "—"}
+                      </td>
+                      <td className="py-3.5 text-right font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(item.total || (item.quantity || 1) * (item.unitPrice || 0))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── TAB 3: PAYMENTS ──────────────────────────────────────────────── */}
       {activeTab === "payments" && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold uppercase">
-                <tr>
-                  <th className="py-3">Payment ID</th>
-                  <th className="py-3">Date</th>
-                  <th className="py-3">Method</th>
-                  <th className="py-3 text-right">Amount</th>
-                  <th className="py-3 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                <tr>
-                  <td className="py-3.5 font-medium text-blue-600 dark:text-blue-400">
-                    PAY-{(invoice._id || invoice.id || "1").slice(-6).toUpperCase()}
-                  </td>
-                  <td className="py-3.5 text-slate-500">{formatDate(issueDate)}</td>
-                  <td className="py-3.5 text-slate-700 dark:text-slate-300">Bank Transfer / UPI</td>
-                  <td className="py-3.5 text-right font-bold text-slate-900 dark:text-white">
-                    {formatCurrency(paidAmount)}
-                  </td>
-                  <td className="py-3.5 text-center">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400">
-                      Success
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {(!invoicePayments || invoicePayments.length === 0) ? (
+            <div className="py-12 text-center text-xs text-slate-400">
+              No payments recorded for this invoice yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="border-b border-slate-200 dark:border-slate-800 text-slate-400 font-semibold uppercase">
+                  <tr>
+                    <th className="py-3">Payment Reference</th>
+                    <th className="py-3">Date</th>
+                    <th className="py-3">Method</th>
+                    <th className="py-3 text-right">Amount</th>
+                    <th className="py-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                  {invoicePayments.map((p, idx) => (
+                    <tr key={p._id || idx}>
+                      <td className="py-3.5 font-medium text-blue-600 dark:text-blue-400">
+                        {p.paymentReference || p._id}
+                      </td>
+                      <td className="py-3.5 text-slate-500">{formatDate(p.paymentDate || p.createdAt)}</td>
+                      <td className="py-3.5 text-slate-700 dark:text-slate-300">{p.paymentMethod || p.method || "Bank Transfer"}</td>
+                      <td className="py-3.5 text-right font-bold text-slate-900 dark:text-white">
+                        {formatCurrency(p.amount || 0)}
+                      </td>
+                      <td className="py-3.5 text-center">
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 capitalize">
+                          {p.status || "Completed"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -677,29 +690,24 @@ export default function InvoiceDetailPage() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Audit Trail</h3>
           <div className="space-y-3 text-xs">
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  Payment Received
-                </span>
-                <span className="text-slate-400 ml-2">₹ {formatCurrency(paidAmount)} paid via online portal</span>
+            {invoice.createdAt && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-900 dark:text-white">Invoice Created</span>
+                  <span className="text-slate-400 ml-2">Invoice {invNumber} generated</span>
+                </div>
+                <span className="text-slate-400">{formatDate(invoice.createdAt)}</span>
               </div>
-              <span className="text-slate-400">{formatDate(dueDate)}</span>
-            </div>
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white">Invoice Sent</span>
-                <span className="text-slate-400 ml-2">Delivered to {customerEmail}</span>
+            )}
+            {invoice.updatedAt && invoice.updatedAt !== invoice.createdAt && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-slate-900 dark:text-white">Invoice Status Updated</span>
+                  <span className="text-slate-400 ml-2">Current status: {status}</span>
+                </div>
+                <span className="text-slate-400">{formatDate(invoice.updatedAt)}</span>
               </div>
-              <span className="text-slate-400">{formatDate(issueDate)}</span>
-            </div>
-            <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl flex items-center justify-between">
-              <div>
-                <span className="font-semibold text-slate-900 dark:text-white">Invoice Created</span>
-                <span className="text-slate-400 ml-2">Generated for {subNumber}</span>
-              </div>
-              <span className="text-slate-400">{formatDate(issueDate)}</span>
-            </div>
+            )}
           </div>
         </div>
       )}
