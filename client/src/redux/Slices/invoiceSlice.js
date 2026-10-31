@@ -58,6 +58,9 @@ export const fetchInvoices = createAsyncThunk(
 export const fetchInvoiceById = createAsyncThunk(
   "invoice/fetchInvoiceById",
   async (id, { rejectWithValue }) => {
+    if (!id || id === "create") {
+      return rejectWithValue("Invalid invoice ID");
+    }
     try {
       return await invService.fetchInvoiceById(id);
     } catch (error) {

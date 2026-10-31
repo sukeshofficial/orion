@@ -212,6 +212,7 @@ export default function AppRoutes() {
 
         {/* Phase 8 – Invoice Management */}
         <Route path="invoices" element={<InvoiceListPage />} />
+        <Route path="invoices/create" element={<Navigate to="/admin/invoices?create=true" replace />} />
         <Route path="invoices/:id" element={<InvoiceDetailPage />} />
 
         {/* Phase 9 – Payment Management */}
@@ -277,6 +278,7 @@ export default function AppRoutes() {
 
         {/* Phase 8 – Invoices (Staff Full Access) */}
         <Route path="invoices" element={<InvoiceListPage />} />
+        <Route path="invoices/create" element={<Navigate to="/staff/invoices?create=true" replace />} />
         <Route path="invoices/:id" element={<InvoiceDetailPage />} />
 
         {/* Phase 9 – Payments */}

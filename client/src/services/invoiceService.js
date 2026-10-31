@@ -21,6 +21,9 @@ export async function fetchInvoices(params = {}) {
  * @returns {{ success: boolean, invoice: Object }}
  */
 export async function fetchInvoiceById(id) {
+  if (!id || id === "create") {
+    throw new Error("Invalid invoice ID");
+  }
   const { data } = await api.get(`${BASE}/${id}`);
   return data;
 }

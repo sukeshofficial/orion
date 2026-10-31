@@ -60,11 +60,15 @@ export default function InvoiceDetailPage() {
   const [showPrintModal, setShowPrintModal] = React.useState(false)
 
   React.useEffect(() => {
+    if (id === "create") {
+      navigate(`${basePath}/invoices?create=true`, { replace: true })
+      return
+    }
     if (id) {
       dispatch(fetchInvoiceById(id))
       dispatch(fetchInvoicePayments(id))
     }
-  }, [dispatch, id])
+  }, [dispatch, id, navigate, basePath])
 
   if (loading) {
     return (
