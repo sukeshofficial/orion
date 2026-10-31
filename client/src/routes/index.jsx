@@ -305,7 +305,7 @@ export default function AppRoutes() {
         <Route path="invoices" element={<MyInvoices />} />
         <Route path="invoices/:id" element={<InvoiceDetails />} />
         <Route path="payments" element={<MyPayments />} />
-        <Route path="profile" element={<MyProfile />} />
+        <Route path="profile" element={<UserProfilePage />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
