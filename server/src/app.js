@@ -18,6 +18,9 @@ import quotationTemplateRoutes from "./routes/quotationTemplate.routes.js";
 import quotationRoutes from "./routes/quotation.routes.js";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import discountRoutes from "./routes/discount.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
+import invoiceRoutes from "./routes/invoice.routes.js";
+import paymentRoutes from "./routes/payment.routes.js";
 
 const app = express();
 
@@ -101,6 +104,9 @@ app.use("/api/v1/quotation-templates", quotationTemplateRoutes);
 app.use("/api/v1/quotations", quotationRoutes);
 app.use("/api/v1/subscriptions", subscriptionRoutes);
 app.use("/api/v1/discounts", discountRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/invoices", invoiceRoutes);
+app.use("/api/v1/payments", paymentRoutes);
 
 // Handle unknown routes
 app.use((req, res) => {
