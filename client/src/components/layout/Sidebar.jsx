@@ -30,30 +30,30 @@ export const ADMIN_NAV_SECTIONS = [
   {
     title: "SALES",
     items: [
-      { name: "Customers", href: "/admin/dashboard?tab=customers", icon: Users },
-      { name: "Quotations", href: "/admin/dashboard?tab=quotations", icon: FileText },
+      { name: "Customers", href: "/admin/customers", icon: Users },
+      { name: "Quotations", href: "/admin/quotations", icon: FileText },
     ],
   },
   {
     title: "SUBSCRIPTIONS",
     items: [
-      { name: "Subscriptions", href: "/admin/dashboard?tab=subscriptions", icon: CalendarDays },
-      { name: "Plans", href: "/admin/dashboard?tab=plans", icon: Boxes },
+      { name: "Subscriptions", href: "/admin/subscriptions", icon: CalendarDays },
+      { name: "Plans", href: "/admin/plans", icon: Boxes },
     ],
   },
   {
     title: "CATALOG",
     items: [
-      { name: "Products", href: "/admin/dashboard?tab=products", icon: PackageOpen },
-      { name: "Taxes", href: "/admin/dashboard?tab=taxes", icon: Receipt },
+      { name: "Products", href: "/admin/products", icon: PackageOpen },
+      { name: "Taxes", href: "/admin/taxes", icon: Receipt },
     ],
   },
   {
     title: "BILLING",
     items: [
-      { name: "Invoices", href: "/admin/dashboard?tab=invoices", icon: ReceiptText },
+      { name: "Invoices", href: "/admin/invoices", icon: ReceiptText },
       { name: "Payments", href: "/admin/dashboard?tab=payments", icon: CreditCard },
-      { name: "Discounts", href: "/admin/dashboard?tab=discounts", icon: Percent },
+      { name: "Discounts", href: "/admin/discounts", icon: Percent },
     ],
   },
   {
@@ -81,22 +81,30 @@ export const STAFF_NAV_SECTIONS = [
   {
     title: "SALES",
     items: [
-      { name: "Customers", href: "/staff/dashboard?tab=customers", icon: Users },
-      { name: "Quotations", href: "/staff/dashboard?tab=quotations", icon: FileText },
+      { name: "Customers", href: "/staff/customers", icon: Users },
+      { name: "Quotations", href: "/staff/quotations", icon: FileText },
     ],
   },
   {
     title: "SUBSCRIPTIONS",
     items: [
-      { name: "Subscriptions", href: "/staff/dashboard?tab=subscriptions", icon: CalendarDays },
-      { name: "Plans", href: "/staff/dashboard?tab=plans", icon: Boxes },
+      { name: "Subscriptions", href: "/staff/subscriptions", icon: CalendarDays },
+      { name: "Plans", href: "/staff/plans", icon: Boxes },
+    ],
+  },
+  {
+    title: "CATALOG",
+    items: [
+      { name: "Products", href: "/staff/products", icon: PackageOpen },
+      { name: "Taxes", href: "/staff/taxes", icon: Receipt },
     ],
   },
   {
     title: "BILLING",
     items: [
-      { name: "Invoices", href: "/staff/dashboard?tab=invoices", icon: ReceiptText },
+      { name: "Invoices", href: "/staff/invoices", icon: ReceiptText },
       { name: "Payments", href: "/staff/dashboard?tab=payments", icon: CreditCard },
+      { name: "Discounts", href: "/staff/discounts", icon: Percent },
     ],
   },
   {
@@ -119,164 +127,136 @@ export default function Sidebar({
 
   const sections = role === "staff" ? STAFF_NAV_SECTIONS : ADMIN_NAV_SECTIONS
 
-  const isItemActive = (href) => {
-    const [itemPath, itemQuery] = href.split("?")
-    const itemTab = new URLSearchParams(itemQuery || "").get("tab")
-
-    if (location.pathname === itemPath) {
-      if (!itemTab && !currentTab) return true
-      return currentTab === itemTab
+  const isItemActive = (item) => {
+    if (item.href.includes("?tab=")) {
+      const itemTab = new URLSearchParams(item.href.split("?")[1]).get("tab")
+      return location.pathname.endsWith("/dashboard") && currentTab === itemTab
     }
-    return false
+    // Sub-path match (e.g. /admin/customers matches /admin/customers/new)
+    if (item.href.endsWith("/dashboard")) {
+      return location.pathname.endsWith("/dashboard") && !currentTab
+    }
+    return location.pathname.startsWith(item.href)
   }
-
-  const sidebarContent = (
-    <div className="flex h-full flex-col bg-white dark:bg-[#111827] text-foreground select-none border-r border-border/80 transition-colors">
-      {/* Sidebar Header */}
-      <div
-        className={`flex h-16 items-center border-b border-border/60 px-4 transition-all ${
-          isCollapsed ? "justify-center px-2" : "justify-between"
-        }`}
-      >
-        <OrionBrand collapsed={isCollapsed} surface="auto" />
-
-        {/* Collapse toggle (desktop only) */}
-        {onToggleCollapse && (
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            className={`hidden md:flex size-7 items-center justify-center rounded-full border border-border/80 bg-white text-muted-foreground hover:bg-muted hover:text-foreground transition-all shadow-xs dark:bg-[#111827] ${
-              isCollapsed ? "absolute -right-3.5 z-40 bg-white dark:bg-[#111827]" : ""
-            }`}
-            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="size-3.5" />
-            ) : (
-              <ChevronLeft className="size-3.5" />
-            )}
-          </button>
-        )}
-
-        {/* Mobile close button */}
-        {onCloseMobile && (
-          <button
-            type="button"
-            onClick={onCloseMobile}
-            className="flex md:hidden size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Close navigation"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Navigation Sections */}
-      <nav
-        className="flex-1 overflow-y-auto px-3 py-4 space-y-5 scrollbar-thin"
-        aria-label="Sidebar Navigation"
-      >
-        {sections.map((section) => (
-          <div key={section.title} className="space-y-1">
-            {!isCollapsed ? (
-              <h4 className="px-3 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                {section.title}
-              </h4>
-            ) : (
-              <div className="mx-auto my-1 h-px w-6 bg-border/60" />
-            )}
-
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const Icon = item.icon
-                const active = isItemActive(item.href)
-
-                return (
-                  <div key={item.name} className="relative group">
-                    <Link
-                      to={item.href}
-                      onClick={() => {
-                        if (isMobileOpen && onCloseMobile) onCloseMobile()
-                      }}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150 ${
-                        active
-                          ? "bg-[#EFF6FF] text-[#2563EB] font-semibold dark:bg-[#2563EB]/20 dark:text-blue-300"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-foreground"
-                      } ${isCollapsed ? "justify-center px-0 py-2.5" : ""}`}
-                    >
-                      <Icon
-                        className={`size-4 shrink-0 ${
-                          active
-                            ? "text-[#2563EB] dark:text-blue-300"
-                            : "text-slate-500 dark:text-slate-400"
-                        }`}
-                      />
-                      {!isCollapsed && (
-                        <span className="truncate">{item.name}</span>
-                      )}
-                    </Link>
-
-                    {/* Tooltip for collapsed mode */}
-                    {isCollapsed && (
-                      <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 hidden group-hover:flex z-50 whitespace-nowrap rounded-md bg-[#0F172A] px-2.5 py-1 text-xs font-medium text-white shadow-xl">
-                        {item.name}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      {/* Role Indicator Footer */}
-      {!isCollapsed && (
-        <div className="p-3 border-t border-border/60">
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-border/60 p-2.5 text-center">
-            <span className="inline-block text-[10px] uppercase tracking-wider font-semibold text-[#2563EB]">
-              {role === "staff" ? "ORION Staff" : "ORION Admin"}
-            </span>
-            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-              {role === "staff" ? "Essential Operations" : "Full Platform Control"}
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
-  )
 
   return (
     <>
-      {/* Desktop Persistent Sidebar */}
-      <aside
-        className={`hidden md:block shrink-0 relative transition-all duration-200 ease-in-out ${
-          isCollapsed ? "w-[72px]" : "w-[240px]"
-        }`}
-      >
-        <div
-          className={`fixed top-0 bottom-0 z-30 transition-all duration-200 ease-in-out ${
-            isCollapsed ? "w-[72px]" : "w-[240px]"
-          }`}
-        >
-          {sidebarContent}
-        </div>
-      </aside>
-
-      {/* Mobile Slide-out Drawer */}
+      {/* Mobile Backdrop */}
       {isMobileOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden">
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity"
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Container */}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ease-in-out
+          ${isCollapsed ? "w-18" : "w-64"}
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        `}
+      >
+        {/* Brand & Collapse Toggle Header */}
+        <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border/60">
+          <OrionBrand collapsed={isCollapsed} />
+
+          {/* Desktop Collapse Trigger */}
+          <button
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="hidden lg:flex size-7 items-center justify-center rounded-lg text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+          >
+            {isCollapsed ? (
+              <ChevronRight className="size-4" />
+            ) : (
+              <ChevronLeft className="size-4" />
+            )}
+          </button>
+
+          {/* Mobile Close Button */}
+          <button
+            type="button"
             onClick={onCloseMobile}
-            aria-hidden="true"
-          />
-          <div className="relative flex w-64 max-w-xs flex-1 flex-col shadow-2xl animate-in slide-in-from-left duration-200">
-            {sidebarContent}
+            aria-label="Close sidebar"
+            className="flex lg:hidden size-8 items-center justify-center rounded-lg text-sidebar-foreground hover:bg-sidebar-accent"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Navigation Sections */}
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6 scrollbar-thin">
+          {sections.map((section, idx) => (
+            <div key={idx} className="space-y-1">
+              {!isCollapsed && (
+                <p className="px-3 text-[10px] font-bold tracking-wider text-muted-foreground uppercase mb-2 select-none">
+                  {section.title}
+                </p>
+              )}
+              {isCollapsed && (
+                <div className="h-px bg-sidebar-border/60 mx-2 my-2" />
+              )}
+              {section.items.map((item, itemIdx) => {
+                const Icon = item.icon
+                const active = isItemActive(item)
+
+                return (
+                  <Link
+                    key={itemIdx}
+                    to={item.href}
+                    onClick={() => {
+                      if (onCloseMobile) onCloseMobile()
+                    }}
+                    title={isCollapsed ? item.name : undefined}
+                    className={`group flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-colors relative
+                      ${
+                        active
+                          ? "bg-[#EFF6FF] text-[#2563EB] font-semibold dark:bg-blue-950/60 dark:text-blue-400"
+                          : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      }
+                      ${isCollapsed ? "justify-center px-0" : ""}
+                    `}
+                  >
+                    <Icon
+                      className={`size-4.5 shrink-0 transition-transform group-hover:scale-105 ${
+                        active
+                          ? "text-[#2563EB] dark:text-blue-400"
+                          : "text-sidebar-foreground/60 group-hover:text-sidebar-foreground"
+                      }`}
+                    />
+                    {!isCollapsed && (
+                      <span className="truncate">{item.name}</span>
+                    )}
+
+                    {/* Active Indicator Strip */}
+                    {active && !isCollapsed && (
+                      <span className="absolute right-2 size-1.5 rounded-full bg-[#2563EB] dark:bg-blue-400" />
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer Role / Mode pill */}
+        <div className="p-3 border-t border-sidebar-border/60">
+          <div
+            className={`flex items-center gap-2 p-2 rounded-xl bg-sidebar-accent/50 text-[11px] text-sidebar-foreground/70 ${
+              isCollapsed ? "justify-center" : ""
+            }`}
+          >
+            <div className="size-2 rounded-full bg-emerald-500 shrink-0" />
+            {!isCollapsed && (
+              <span className="truncate font-medium capitalize">
+                {role === "admin" ? "Admin Workspace" : "Staff Portal"}
+              </span>
+            )}
           </div>
         </div>
-      )}
+      </aside>
     </>
   )
 }
