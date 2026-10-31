@@ -11,6 +11,9 @@ import TemplateListPage from "@/pages/quotations/TemplateListPage"
 import SubscriptionListPage from "@/pages/subscriptions/SubscriptionListPage"
 import DiscountListPage from "@/pages/discounts/DiscountListPage"
 import InvoiceListPage from "@/pages/invoices/InvoiceListPage"
+import PaymentListPage from "@/pages/payments/PaymentListPage"
+import AdminAnalyticsDashboard from "@/pages/analytics/AdminAnalyticsDashboard"
+import StaffListPage from "@/pages/admin/StaffListPage"
 import {
   Users,
   FileText,
@@ -102,6 +105,21 @@ export default function DashboardPage({ currentRole }) {
   // Phase 8: Invoices tab
   if (activeTab === "invoices") {
     return <InvoiceListPage />
+  }
+
+  // Phase 9: Payments tab
+  if (activeTab === "payments") {
+    return <PaymentListPage />
+  }
+
+  // Phase 10: Analytics tab
+  if (activeTab === "analytics") {
+    return <AdminAnalyticsDashboard />
+  }
+
+  // Staff Administration tab
+  if (activeTab === "staff") {
+    return <StaffListPage />
   }
 
   if (activeTab && TAB_MODULES[activeTab]) {

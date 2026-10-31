@@ -51,6 +51,25 @@ import DiscountDetailPage from "@/pages/discounts/DiscountDetailPage"
 import InvoiceListPage from "@/pages/invoices/InvoiceListPage"
 import InvoiceDetailPage from "@/pages/invoices/InvoiceDetailPage"
 
+// ── Phase 9 ─ Payment Management Pages ────────────────────────────────────────
+import PaymentListPage from "@/pages/payments/PaymentListPage"
+import PaymentDetailPage from "@/pages/payments/PaymentDetailPage"
+
+// ── Phase 10 ─ Analytics & Financial Reporting ────────────────────────────────
+import AdminAnalyticsDashboard from "@/pages/analytics/AdminAnalyticsDashboard"
+
+// ── Staff Administration ──────────────────────────────────────────────────────
+import StaffListPage from "@/pages/admin/StaffListPage"
+
+// ── Phase 11 ─ Customer Portal Pages ──────────────────────────────────────────
+import CustomerDashboard from "@/pages/portal/CustomerDashboard"
+import MySubscriptions from "@/pages/portal/MySubscriptions"
+import SubscriptionDetails from "@/pages/portal/SubscriptionDetails"
+import MyInvoices from "@/pages/portal/MyInvoices"
+import InvoiceDetails from "@/pages/portal/InvoiceDetails"
+import MyPayments from "@/pages/portal/MyPayments"
+import MyProfile from "@/pages/portal/MyProfile"
+
 /**
  * DashboardRedirect
  * Redirects authenticated users from legacy /dashboard to their role-specific dashboard
@@ -193,6 +212,16 @@ export default function AppRoutes() {
         <Route path="invoices" element={<InvoiceListPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailPage />} />
 
+        {/* Phase 9 – Payment Management */}
+        <Route path="payments" element={<PaymentListPage />} />
+        <Route path="payments/:id" element={<PaymentDetailPage />} />
+
+        {/* Phase 10 – Analytics & Financial Reporting */}
+        <Route path="analytics" element={<AdminAnalyticsDashboard />} />
+
+        {/* Staff Administration */}
+        <Route path="staff" element={<StaffListPage />} />
+
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
@@ -248,6 +277,13 @@ export default function AppRoutes() {
         <Route path="invoices" element={<InvoiceListPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailPage />} />
 
+        {/* Phase 9 – Payments */}
+        <Route path="payments" element={<PaymentListPage />} />
+        <Route path="payments/:id" element={<PaymentDetailPage />} />
+
+        {/* Phase 10 – Analytics */}
+        <Route path="analytics" element={<AdminAnalyticsDashboard />} />
+
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
@@ -261,8 +297,13 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="profile" element={<UserProfilePage />} />
+        <Route path="dashboard" element={<CustomerDashboard />} />
+        <Route path="subscriptions" element={<MySubscriptions />} />
+        <Route path="subscriptions/:id" element={<SubscriptionDetails />} />
+        <Route path="invoices" element={<MyInvoices />} />
+        <Route path="invoices/:id" element={<InvoiceDetails />} />
+        <Route path="payments" element={<MyPayments />} />
+        <Route path="profile" element={<MyProfile />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 

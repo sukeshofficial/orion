@@ -97,9 +97,10 @@ export default function Navbar({
     userRole === "customer" || userRole === "user"
       ? [
           { name: "Dashboard", href: "/portal/dashboard" },
-          { name: "Subscriptions", href: "/portal/dashboard?tab=subscriptions" },
-          { name: "Invoices", href: "/portal/dashboard?tab=invoices" },
-          { name: "Support", href: "/portal/dashboard?tab=support" },
+          { name: "Subscriptions", href: "/portal/subscriptions" },
+          { name: "Invoices", href: "/portal/invoices" },
+          { name: "Payments", href: "/portal/payments" },
+          { name: "Profile", href: "/portal/profile" },
         ]
       : []
 
