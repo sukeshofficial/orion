@@ -10,8 +10,10 @@ import testInputRoutes from "./routes/testInput.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import customerRoutes from "./routes/customer.routes.js";
 
 const app = express();
+
 
 // Security and middleware
 app.use(helmet());
@@ -84,6 +86,8 @@ app.use("/api/v1/test-input", testInputRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/customers", customerRoutes);
+
 
 
 // Handle unknown routes

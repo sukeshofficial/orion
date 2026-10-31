@@ -41,10 +41,12 @@ const request = supertest(app);
 // ─────────────────────────────────────────────────────────────────────────────
 
 const User   = (await import("../src/models/user.model.js")).default;
+const Customer = (await import("../src/models/customer.model.js")).default;
 const { USER_ROLES } = await import("../src/config/roles.js");
 const { USER_STATUS } = await import("../src/models/user.model.js");
 const { PERMISSIONS } = await import("../src/config/permissions.js");
 const { generateToken } = await import("../src/utils/token.utils.js");
+
 
 /** Unique email factory to avoid conflicts across test runs. */
 const ts = () => Date.now();
@@ -676,5 +678,348 @@ describe("11. Phase 2 Admin Route Foundation & Security", () => {
     assert.equal(res.status, 400);
     assert.equal(res.body.success, false);
     assert.match(res.body.message, /last active administrator/i);
+
+    // Restore any actual real/seed admin accounts that were disabled during this isolated test
+    const configuredAdminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
+    if (configuredAdminEmail) {
+      await User.updateOne(
+        { email: configuredAdminEmail },
+        { $set: { status: USER_STATUS.ACTIVE } }
+      );
+    }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 12 — Phase 3 Admin Staff Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("12. Phase 3 Admin Staff Management", () => {
+  let admin, adminToken;
+  let staff, staffToken;
+  let customer, customerToken;
+  let createdStaffId;
+
+  before(async () => {
+    admin = await createUser({
+      name: "Phase 3 Admin",
+      email: `p3-admin-${ts()}@rbac.test`,
+      role: USER_ROLES.ADMIN,
+      permissions: ["*"],
+    });
+    createdEmails.push(admin.email);
+    adminToken = generateToken(admin);
+
+    staff = await createUser({
+      name: "Phase 3 Staff",
+      email: `p3-staff-${ts()}@rbac.test`,
+      role: USER_ROLES.INTERNAL_USER,
+      permissions: [PERMISSIONS.STAFF_READ], // only has read
+    });
+    createdEmails.push(staff.email);
+    staffToken = generateToken(staff);
+
+    customer = await createUser({
+      name: "Phase 3 Customer",
+      email: `p3-cust-${ts()}@rbac.test`,
+      role: USER_ROLES.USER,
+      permissions: [],
+    });
+    createdEmails.push(customer.email);
+    customerToken = generateToken(customer);
+  });
+
+  it("Customer is rejected with 403 when trying to access staff endpoints", async () => {
+    const listRes = await request
+      .get("/api/v1/admin/staff")
+      .set("Authorization", `Bearer ${customerToken}`);
+    assert.equal(listRes.status, 403);
+
+    const createRes = await request
+      .post("/api/v1/admin/staff")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({
+        name: "Test Staff",
+        email: `hacked-${ts()}@rbac.test`,
+        phone: "1234567890",
+        password: "Password123!",
+      });
+    assert.equal(createRes.status, 403);
+  });
+
+  it("Staff cannot create other staff (only admin can create staff)", async () => {
+    const res = await request
+      .post("/api/v1/admin/staff")
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({
+        name: "Test Staff Attempt",
+        email: `staff-attempt-${ts()}@rbac.test`,
+        phone: "1234567890",
+        password: "Password123!",
+      });
+    assert.equal(res.status, 403);
+  });
+
+  it("Admin can create a new staff member with internal_user role and permissions", async () => {
+    const candidateEmail = `new-staff-${ts()}@rbac.test`;
+    createdEmails.push(candidateEmail);
+
+    const res = await request
+      .post("/api/v1/admin/staff")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        name: "Alice Operator",
+        email: candidateEmail,
+        phone: "+1 555-9876",
+        password: "StaffSecurePassword123!",
+        role: "admin", // Malicious attempt to elevate role
+        permissions: [PERMISSIONS.CUSTOMER_READ, PERMISSIONS.CUSTOMER_CREATE],
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.staff);
+    assert.equal(res.body.staff.email, candidateEmail);
+    // Must be assigned internal_user role automatically, ignoring body.role=admin
+    assert.equal(res.body.staff.role, USER_ROLES.INTERNAL_USER);
+    assert.ok(res.body.staff.permissions.includes(PERMISSIONS.CUSTOMER_READ));
+    assert.ok(res.body.staff.permissions.includes(PERMISSIONS.CUSTOMER_CREATE));
+    assert.equal(res.body.staff.password, undefined);
+
+    createdStaffId = res.body.staff.id;
+  });
+
+  it("Admin can list staff members with pagination, search, and permission filtering", async () => {
+    const res = await request
+      .get("/api/v1/admin/staff")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .query({ search: "Alice", limit: 10 });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(Array.isArray(res.body.staff));
+    assert.ok(res.body.staff.length >= 1);
+    assert.equal(res.body.staff[0].password, undefined);
+  });
+
+  it("Admin can retrieve individual staff details", async () => {
+    const res = await request
+      .get(`/api/v1/admin/staff/${createdStaffId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.staff.id, createdStaffId);
+    assert.equal(res.body.staff.password, undefined);
+  });
+
+  it("Admin can update staff permitted fields and permissions", async () => {
+    const res = await request
+      .patch(`/api/v1/admin/staff/${createdStaffId}`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        name: "Alice Updated",
+        role: "admin", // Tampering attempt
+        permissions: [PERMISSIONS.CUSTOMER_READ, PERMISSIONS.CUSTOMER_UPDATE],
+      });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.staff.name, "Alice Updated");
+    // Role remains internal_user
+    assert.equal(res.body.staff.role, USER_ROLES.INTERNAL_USER);
+    assert.ok(res.body.staff.permissions.includes(PERMISSIONS.CUSTOMER_UPDATE));
+  });
+
+  it("Admin can deactivate staff and deactivated staff cannot access protected endpoints", async () => {
+    // 1. Fetch the user to create a valid JWT before deactivation
+    const dbStaff = await User.findById(createdStaffId);
+    const validStaffToken = generateToken(dbStaff);
+
+    // 2. Deactivate staff
+    const deactRes = await request
+      .patch(`/api/v1/admin/staff/${createdStaffId}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ status: "disabled" });
+
+    assert.equal(deactRes.status, 200);
+    assert.equal(deactRes.body.staff.status, "disabled");
+
+    // 3. Deactivated staff attempt to call /auth/me or dashboard
+    const testRes = await request
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${validStaffToken}`);
+
+    // Rejected because status is disabled
+    assert.equal(testRes.status, 403);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 13 — Phase 4 Admin Customer Management
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("13. Phase 4 Admin Customer Management", () => {
+  let admin, adminToken;
+  let staffWithCustomerPerms, staffWithPermsToken;
+  let staffWithoutPerms, staffWithoutPermsToken;
+  let customerUser, customerUserToken;
+  let createdCustomerId;
+
+  before(async () => {
+    admin = await createUser({
+      name: "Phase 4 Admin",
+      email: `p4-admin-${ts()}@rbac.test`,
+      role: USER_ROLES.ADMIN,
+      permissions: ["*"],
+    });
+    createdEmails.push(admin.email);
+    adminToken = generateToken(admin);
+
+    staffWithCustomerPerms = await createUser({
+      name: "Staff Customer Manager",
+      email: `p4-staff-cust-${ts()}@rbac.test`,
+      role: USER_ROLES.INTERNAL_USER,
+      permissions: [
+        PERMISSIONS.CUSTOMER_READ,
+        PERMISSIONS.CUSTOMER_CREATE,
+        PERMISSIONS.CUSTOMER_UPDATE,
+      ],
+    });
+    createdEmails.push(staffWithCustomerPerms.email);
+    staffWithPermsToken = generateToken(staffWithCustomerPerms);
+
+    staffWithoutPerms = await createUser({
+      name: "Staff No Cust Perms",
+      email: `p4-staff-noperm-${ts()}@rbac.test`,
+      role: USER_ROLES.INTERNAL_USER,
+      permissions: [], // role default only has customer.read, lacks customer.create / customer.update
+    });
+    createdEmails.push(staffWithoutPerms.email);
+    staffWithoutPermsToken = generateToken(staffWithoutPerms);
+
+    customerUser = await createUser({
+      name: "Target Customer Account",
+      email: `target-cust-${ts()}@rbac.test`,
+      role: USER_ROLES.USER,
+      permissions: [],
+    });
+    createdEmails.push(customerUser.email);
+    customerUserToken = generateToken(customerUser);
+  });
+
+  after(async () => {
+    if (createdCustomerId) {
+      await Customer.findByIdAndDelete(createdCustomerId);
+    }
+  });
+
+  it("Customer user cannot create or access customer management endpoints (403)", async () => {
+    const listRes = await request
+      .get("/api/v1/customers")
+      .set("Authorization", `Bearer ${customerUserToken}`);
+    assert.equal(listRes.status, 403);
+
+    const createRes = await request
+      .post("/api/v1/customers")
+      .set("Authorization", `Bearer ${customerUserToken}`)
+      .send({ userId: customerUser._id });
+    assert.equal(createRes.status, 403);
+  });
+
+  it("Staff without customer.create cannot create customer profile (403)", async () => {
+    const res = await request
+      .post("/api/v1/customers")
+      .set("Authorization", `Bearer ${staffWithoutPermsToken}`)
+      .send({ userId: customerUser._id });
+    assert.equal(res.status, 403);
+  });
+
+  it("Authorized staff with customer.create can create customer profile with auto-generated customerNumber", async () => {
+    const res = await request
+      .post("/api/v1/customers")
+      .set("Authorization", `Bearer ${staffWithPermsToken}`)
+      .send({
+        userId: customerUser._id,
+        companyName: "Acme Rentals Inc.",
+        phone: "+1 555-1122",
+        billingAddress: {
+          street: "123 Market St",
+          city: "San Francisco",
+          state: "CA",
+          country: "USA",
+          postalCode: "94103",
+        },
+        taxIdentificationNumber: "US-987654321",
+      });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.customer);
+    assert.ok(res.body.customer.customerNumber.startsWith("CUST-"));
+    assert.equal(res.body.customer.companyName, "Acme Rentals Inc.");
+    assert.equal(res.body.customer.taxIdentificationNumber, "US-987654321");
+    // Password of associated user should never be exposed
+    if (res.body.customer.userId) {
+      assert.equal(res.body.customer.userId.password, undefined);
+    }
+
+    createdCustomerId = res.body.customer.id;
+  });
+
+  it("Prevents creating duplicate customer profile for the same user account (409)", async () => {
+    const res = await request
+      .post("/api/v1/customers")
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({
+        userId: customerUser._id,
+        companyName: "Duplicate Corp",
+      });
+
+    assert.equal(res.status, 409);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /already exists/i);
+  });
+
+  it("Admin and authorized staff can list customers with search, pagination, and active filtering", async () => {
+    const res = await request
+      .get("/api/v1/customers")
+      .set("Authorization", `Bearer ${staffWithPermsToken}`)
+      .query({ search: "Acme", limit: 5 });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(Array.isArray(res.body.customers));
+    assert.ok(res.body.customers.length >= 1);
+    assert.equal(res.body.customers[0].companyName, "Acme Rentals Inc.");
+  });
+
+  it("Admin and authorized staff can retrieve customer profile by ID", async () => {
+    const res = await request
+      .get(`/api/v1/customers/${createdCustomerId}`)
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.customer.id, createdCustomerId);
+    assert.equal(res.body.customer.companyName, "Acme Rentals Inc.");
+  });
+
+  it("Authorized staff can update customer profile details", async () => {
+    const res = await request
+      .patch(`/api/v1/customers/${createdCustomerId}`)
+      .set("Authorization", `Bearer ${staffWithPermsToken}`)
+      .send({
+        companyName: "Acme Global Rentals LLC",
+        billingAddress: {
+          city: "Oakland",
+        },
+      });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.customer.companyName, "Acme Global Rentals LLC");
+    assert.equal(res.body.customer.billingAddress.city, "Oakland");
+  });
+});
+

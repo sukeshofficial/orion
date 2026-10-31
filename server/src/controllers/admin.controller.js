@@ -111,3 +111,95 @@ export const getCatalog = async (req, res) => {
     });
   }
 };
+
+/**
+ * Staff management controller actions
+ */
+export const listStaff = async (req, res) => {
+  try {
+    const { page, limit, status, search, permission } = req.query;
+    const result = await userService.listStaff({ page, limit, status, search, permission });
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to list staff",
+    });
+  }
+};
+
+export const getStaff = async (req, res) => {
+  try {
+    const staff = await userService.getStaffById(req.params.id);
+    return res.status(200).json({
+      success: true,
+      staff,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to retrieve staff member",
+    });
+  }
+};
+
+export const createStaff = async (req, res) => {
+  try {
+    const { name, email, phone, password, permissions } = req.body;
+    const staff = await userService.createInternalUser({
+      name,
+      email,
+      phone,
+      password,
+      permissions,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Staff member created successfully",
+      staff,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to create staff member",
+    });
+  }
+};
+
+export const updateStaff = async (req, res) => {
+  try {
+    const staff = await userService.updateStaffProfile(req.params.id, req.body);
+    return res.status(200).json({
+      success: true,
+      message: "Staff member updated successfully",
+      staff,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to update staff member",
+    });
+  }
+};
+
+export const updateStaffStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const staff = await userService.updateUserStatus(req.params.id, status);
+    return res.status(200).json({
+      success: true,
+      message: `Staff status updated to ${status}`,
+      staff,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to update staff status",
+    });
+  }
+};
+

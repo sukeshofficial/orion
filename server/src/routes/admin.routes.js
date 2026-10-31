@@ -6,6 +6,11 @@ import {
   updateInternalUserPermissions,
   updateUserStatus,
   getCatalog,
+  listStaff,
+  getStaff,
+  createStaff,
+  updateStaff,
+  updateStaffStatus,
 } from "../controllers/admin.controller.js";
 import { authenticate, requireRole, requirePermission } from "../middleware/auth.middleware.js";
 import { PERMISSIONS } from "../config/permissions.js";
@@ -45,7 +50,48 @@ router.patch(
   updateUserStatus
 );
 
-// ── Internal Staff Management ─────────────────────────────────────────────────
+// ── Staff Management (Phase 3) ────────────────────────────────────────────────
+// List staff members (admin only)
+router.get(
+  "/staff",
+  requireRole("admin"),
+  requirePermission(PERMISSIONS.STAFF_READ),
+  listStaff
+);
+
+// Retrieve staff member by ID (admin only)
+router.get(
+  "/staff/:id",
+  requireRole("admin"),
+  requirePermission(PERMISSIONS.STAFF_READ),
+  getStaff
+);
+
+// Create staff member (admin only)
+router.post(
+  "/staff",
+  requireRole("admin"),
+  requirePermission(PERMISSIONS.STAFF_CREATE),
+  createStaff
+);
+
+// Update staff member profile / permissions (admin only)
+router.patch(
+  "/staff/:id",
+  requireRole("admin"),
+  requirePermission(PERMISSIONS.STAFF_UPDATE),
+  updateStaff
+);
+
+// Update staff status (activate / deactivate) (admin only)
+router.patch(
+  "/staff/:id/status",
+  requireRole("admin"),
+  requirePermission(PERMISSIONS.STAFF_UPDATE),
+  updateStaffStatus
+);
+
+// ── Internal Staff Management (Legacy Compatibility) ──────────────────────────
 // Provision a new internal staff account (admin only)
 router.post(
   "/internal-users",
@@ -63,3 +109,4 @@ router.patch(
 );
 
 export default router;
+

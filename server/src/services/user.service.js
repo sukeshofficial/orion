@@ -179,3 +179,121 @@ export const updateUserStatus = async (userId, status) => {
   await user.save();
   return user.toSafeObject();
 };
+
+/**
+ * List internal staff members with filtering and pagination.
+ */
+export const listStaff = async ({ page = 1, limit = 20, status, search, permission }) => {
+  const query = {
+    role: { $in: [USER_ROLES.INTERNAL_USER, "internal_staff"] },
+  };
+
+  if (status) {
+    query.status = status;
+  }
+
+  if (permission) {
+    query.permissions = permission;
+  }
+
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const skip = (Math.max(1, parseInt(page, 10)) - 1) * parseInt(limit, 10);
+  const take = Math.min(100, Math.max(1, parseInt(limit, 10)));
+
+  const [staffList, total] = await Promise.all([
+    User.find(query).sort({ createdAt: -1 }).skip(skip).limit(take),
+    User.countDocuments(query),
+  ]);
+
+  return {
+    staff: staffList.map((u) => u.toSafeObject()),
+    pagination: {
+      total,
+      page: parseInt(page, 10),
+      limit: take,
+      totalPages: Math.ceil(total / take),
+    },
+  };
+};
+
+/**
+ * Retrieve staff member by ID.
+ */
+export const getStaffById = async (staffId) => {
+  const staff = await User.findById(staffId);
+  if (!staff || normalizeRole(staff.role) !== USER_ROLES.INTERNAL_USER) {
+    const error = new Error("Staff member not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  return staff.toSafeObject();
+};
+
+/**
+ * Update staff profile and/or assigned permissions (admin-only).
+ * Explicitly guards against role tampering.
+ */
+export const updateStaffProfile = async (staffId, updates = {}) => {
+  const staff = await User.findById(staffId);
+  if (!staff || normalizeRole(staff.role) !== USER_ROLES.INTERNAL_USER) {
+    const error = new Error("Staff member not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Update permitted profile fields
+  if (updates.name && typeof updates.name === "string" && updates.name.trim()) {
+    staff.name = updates.name.trim();
+  }
+
+  if (updates.phone && typeof updates.phone === "string" && updates.phone.trim()) {
+    staff.phone = updates.phone.trim();
+  }
+
+  if (updates.email && typeof updates.email === "string" && updates.email.trim()) {
+    const normalizedEmail = updates.email.toLowerCase().trim();
+    if (normalizedEmail !== staff.email) {
+      const existing = await User.findOne({ email: normalizedEmail, _id: { $ne: staff._id } });
+      if (existing) {
+        const error = new Error("An account with this email already exists");
+        error.statusCode = 409;
+        throw error;
+      }
+      staff.email = normalizedEmail;
+    }
+  }
+
+  // Handle permission assignment if provided
+  if (Array.isArray(updates.permissions)) {
+    const { valid, invalid } = validatePermissions(updates.permissions);
+    if (!valid) {
+      const error = new Error(`Invalid permissions specified: ${invalid.join(", ")}`);
+      error.statusCode = 400;
+      throw error;
+    }
+    staff.permissions = updates.permissions;
+  }
+
+  // Update status if provided
+  if (updates.status) {
+    if (!Object.values(USER_STATUS).includes(updates.status)) {
+      const error = new Error(`Invalid status: ${updates.status}`);
+      error.statusCode = 400;
+      throw error;
+    }
+    staff.status = updates.status;
+    if (updates.status === USER_STATUS.DISABLED) {
+      staff.tokenVersion = (staff.tokenVersion ?? 0) + 1;
+    }
+  }
+
+  await staff.save();
+  return staff.toSafeObject();
+};
+
