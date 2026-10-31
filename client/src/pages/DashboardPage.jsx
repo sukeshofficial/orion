@@ -1,81 +1,90 @@
 import * as React from "react"
-import { Link } from "react-router-dom"
-import { useAuth } from "@/context/AuthContext"
-import { User, Calendar, Package, ArrowRight, ShieldCheck } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
+import WorkspacePlaceholder from "@/components/layout/WorkspacePlaceholder"
+import { useRoleLayout } from "@/components/layout/AppLayout"
+import {
+  Users,
+  FileText,
+  CalendarDays,
+  Boxes,
+  PackageOpen,
+  Receipt,
+  ReceiptText,
+  CreditCard,
+  Percent,
+  UserCog,
+  Settings,
+  TrendingUp,
+  HelpCircle,
+  Clock,
+} from "lucide-react"
 
-export default function DashboardPage() {
-  const { user } = useAuth()
-  const displayName = user?.name || user?.email?.split("@")[0] || "Customer"
+const TAB_MODULES = {
+  customers: { title: "Customers", subtitle: "Customer records, profiles, and relationship management", icon: Users },
+  quotations: { title: "Quotations", subtitle: "Sales quotation management, pricing, and approvals", icon: FileText },
+  subscriptions: { title: "Subscriptions", subtitle: "Active, paused, and recurring subscription lifecycles", icon: CalendarDays },
+  plans: { title: "Plans", subtitle: "Tier configurations, billing intervals, and entitlements", icon: Boxes },
+  products: { title: "Products", subtitle: "Product catalog, items, and pricing structures", icon: PackageOpen },
+  taxes: { title: "Taxes", subtitle: "Tax rates, jurisdictions, and fiscal categories", icon: Receipt },
+  invoices: { title: "Invoices", subtitle: "Generated invoices, billing schedules, and ledger entries", icon: ReceiptText },
+  payments: { title: "Payments", subtitle: "Payment gateways, transactions, and settlement histories", icon: CreditCard },
+  discounts: { title: "Discounts", subtitle: "Promotional campaigns, coupons, and discount matrix", icon: Percent },
+  staff: { title: "Staff Administration", subtitle: "Internal staff members, operational seats, and permissions", icon: UserCog },
+  settings: { title: "Platform Settings", subtitle: "Global workspace configuration, system defaults, and webhooks", icon: Settings },
+  analytics: { title: "Financial Analytics", subtitle: "Recurring revenue, churn trends, and accounting reports", icon: TrendingUp },
+  support: { title: "Support Center", subtitle: "Customer assistance, ticketing, and platform documentation", icon: HelpCircle },
+}
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
-      {/* Welcome Banner */}
-      <div className="rounded-2xl border border-border/80 bg-card p-6 sm:p-8 shadow-xs mb-8 transition-colors">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-900 dark:bg-blue-950/60 dark:text-blue-200 border border-blue-200/60 dark:border-blue-800/60 mb-3">
-              <ShieldCheck className="size-3.5" /> ForgeGrid Platform
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              Welcome back, {displayName}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              Access your workspace and manage your account with ease.
-            </p>
+export default function DashboardPage({ currentRole, onSelectRole }) {
+  const [searchParams] = useSearchParams()
+  const activeTab = searchParams.get("tab")
+  const roleContext = useRoleLayout()
+
+  const role = currentRole || roleContext?.currentRole || "admin"
+  const selectRole = onSelectRole || roleContext?.setRole
+
+  if (activeTab && TAB_MODULES[activeTab]) {
+    const info = TAB_MODULES[activeTab]
+    const Icon = info.icon
+
+    return (
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-6 animate-in fade-in duration-200">
+        <div>
+          <h1 className="text-2xl sm:text-[32px] font-semibold tracking-tight text-foreground sm:leading-[40px]">
+            {info.title}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1.5 leading-[22px]">
+            {info.subtitle}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-card p-8 sm:p-12 text-center shadow-xs">
+          <div className="size-12 rounded-2xl bg-[#EFF6FF] dark:bg-blue-950/40 text-[#2563EB] mx-auto flex items-center justify-center mb-4 ring-1 ring-[#2563EB]/20">
+            <Icon className="size-6" />
           </div>
+          <h2 className="text-lg font-semibold text-foreground">
+            {info.title} Module
+          </h2>
+          <p className="text-xs text-muted-foreground max-w-md mx-auto mt-2 leading-relaxed">
+            This module shell is connected to the ORION Phase 0 navigation foundation.
+            Production business logic will be integrated in subsequent phases.
+          </p>
 
-          <Link
-            to="/profile"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold shadow-xs transition shrink-0"
-          >
-            <User className="size-4" />
-            <span>View Profile</span>
-            <ArrowRight className="size-4" />
-          </Link>
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-[#EFF6FF] text-[#2563EB] border border-[#2563EB]/20 dark:bg-blue-950/60 dark:text-blue-300">
+              <Clock className="size-3" />
+              Phase 0 Visual Foundation Active
+            </span>
+          </div>
         </div>
       </div>
+    )
+  }
 
-      {/* Quick Navigation Cards */}
-      {/* <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <Link
-          to="/rental"
-          className="group rounded-2xl border border-border/80 bg-card p-6 shadow-xs hover:border-blue-300 dark:hover:border-blue-800/60 transition-all"
-        >
-          <div className="size-11 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-            <Calendar className="size-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h2 className="text-base font-bold text-foreground">Rentals</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Browse active clothing rentals, return schedules, and bookings.
-          </p>
-        </Link>
-
-        <Link
-          to="/products"
-          className="group rounded-2xl border border-border/80 bg-card p-6 shadow-xs hover:border-blue-300 dark:hover:border-blue-800/60 transition-all"
-        >
-          <div className="size-11 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-            <Package className="size-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h2 className="text-base font-bold text-foreground">Products</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Explore available designer catalogs and eco-friendly garments.
-          </p>
-        </Link>
-
-        <Link
-          to="/profile"
-          className="group rounded-2xl border border-border/80 bg-card p-6 shadow-xs hover:border-blue-300 dark:hover:border-blue-800/60 transition-all"
-        >
-          <div className="size-11 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-foreground flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
-            <User className="size-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <h2 className="text-base font-bold text-foreground">Account Settings</h2>
-          <p className="text-xs text-muted-foreground mt-1">
-            Manage your personal information, security options, and password.
-          </p>
-        </Link>
-      </div> */}
-    </div>
+  return (
+    <WorkspacePlaceholder
+      currentRole={role}
+      onSelectRole={selectRole}
+    />
   )
 }
