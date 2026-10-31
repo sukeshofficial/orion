@@ -662,6 +662,7 @@ export default function InvoiceListPage() {
           onClose={() => setShowGenerateModal(false)}
           onSuccess={() => {
             setShowGenerateModal(false)
+            dispatch(fetchInvoiceStats())
             loadInvoices(1)
           }}
         />
