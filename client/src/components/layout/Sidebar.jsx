@@ -37,7 +37,7 @@ export const ADMIN_NAV_SECTIONS = [
   {
     title: "SUBSCRIPTIONS",
     items: [
-      { name: "Subscriptions", href: "/admin/dashboard?tab=subscriptions", icon: CalendarDays },
+      { name: "Subscriptions", href: "/admin/subscriptions", icon: CalendarDays },
       { name: "Plans", href: "/admin/plans", icon: Boxes },
     ],
   },
@@ -51,9 +51,9 @@ export const ADMIN_NAV_SECTIONS = [
   {
     title: "BILLING",
     items: [
-      { name: "Invoices", href: "/admin/dashboard?tab=invoices", icon: ReceiptText },
+      { name: "Invoices", href: "/admin/invoices", icon: ReceiptText },
       { name: "Payments", href: "/admin/dashboard?tab=payments", icon: CreditCard },
-      { name: "Discounts", href: "/admin/dashboard?tab=discounts", icon: Percent },
+      { name: "Discounts", href: "/admin/discounts", icon: Percent },
     ],
   },
   {
@@ -88,7 +88,7 @@ export const STAFF_NAV_SECTIONS = [
   {
     title: "SUBSCRIPTIONS",
     items: [
-      { name: "Subscriptions", href: "/staff/dashboard?tab=subscriptions", icon: CalendarDays },
+      { name: "Subscriptions", href: "/staff/subscriptions", icon: CalendarDays },
       { name: "Plans", href: "/staff/plans", icon: Boxes },
     ],
   },
@@ -102,8 +102,9 @@ export const STAFF_NAV_SECTIONS = [
   {
     title: "BILLING",
     items: [
-      { name: "Invoices", href: "/staff/dashboard?tab=invoices", icon: ReceiptText },
+      { name: "Invoices", href: "/staff/invoices", icon: ReceiptText },
       { name: "Payments", href: "/staff/dashboard?tab=payments", icon: CreditCard },
+      { name: "Discounts", href: "/staff/discounts", icon: Percent },
     ],
   },
   {

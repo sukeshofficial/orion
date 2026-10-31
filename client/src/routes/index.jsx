@@ -37,6 +37,20 @@ import QuotationListPage from "@/pages/quotations/QuotationListPage"
 import QuotationWizardPage from "@/pages/quotations/QuotationWizardPage"
 import QuotationDetailPage from "@/pages/quotations/QuotationDetailPage"
 
+// ── Phase 6 ─ Subscription Management Pages ──────────────────────────────────
+import SubscriptionListPage from "@/pages/subscriptions/SubscriptionListPage"
+import SubscriptionWizardPage from "@/pages/subscriptions/SubscriptionWizardPage"
+import SubscriptionDetailPage from "@/pages/subscriptions/SubscriptionDetailPage"
+
+// ── Phase 7 ─ Discount Management Pages ──────────────────────────────────────
+import DiscountListPage from "@/pages/discounts/DiscountListPage"
+import DiscountFormPage from "@/pages/discounts/DiscountFormPage"
+import DiscountDetailPage from "@/pages/discounts/DiscountDetailPage"
+
+// ── Phase 8 ─ Invoice Management Pages ───────────────────────────────────────
+import InvoiceListPage from "@/pages/invoices/InvoiceListPage"
+import InvoiceDetailPage from "@/pages/invoices/InvoiceDetailPage"
+
 /**
  * DashboardRedirect
  * Redirects authenticated users from legacy /dashboard to their role-specific dashboard
@@ -164,6 +178,21 @@ export default function AppRoutes() {
         <Route path="quotations/:id" element={<QuotationDetailPage />} />
         <Route path="quotations/:id/edit" element={<QuotationWizardPage />} />
 
+        {/* Phase 6 – Subscription Lifecycle Management */}
+        <Route path="subscriptions" element={<SubscriptionListPage />} />
+        <Route path="subscriptions/new" element={<SubscriptionWizardPage />} />
+        <Route path="subscriptions/:id" element={<SubscriptionDetailPage />} />
+
+        {/* Phase 7 – Discount Management */}
+        <Route path="discounts" element={<DiscountListPage />} />
+        <Route path="discounts/new" element={<DiscountFormPage />} />
+        <Route path="discounts/:id" element={<DiscountDetailPage />} />
+        <Route path="discounts/:id/edit" element={<DiscountFormPage />} />
+
+        {/* Phase 8 – Invoice Management */}
+        <Route path="invoices" element={<InvoiceListPage />} />
+        <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
@@ -203,6 +232,21 @@ export default function AppRoutes() {
         <Route path="quotations/new" element={<QuotationWizardPage />} />
         <Route path="quotations/:id" element={<QuotationDetailPage />} />
         <Route path="quotations/:id/edit" element={<QuotationWizardPage />} />
+
+        {/* Phase 6 – Subscriptions (Staff Full Access) */}
+        <Route path="subscriptions" element={<SubscriptionListPage />} />
+        <Route path="subscriptions/new" element={<SubscriptionWizardPage />} />
+        <Route path="subscriptions/:id" element={<SubscriptionDetailPage />} />
+
+        {/* Phase 7 – Discounts (Staff Read + Apply) */}
+        <Route path="discounts" element={<DiscountListPage />} />
+        <Route path="discounts/new" element={<DiscountFormPage />} />
+        <Route path="discounts/:id" element={<DiscountDetailPage />} />
+        <Route path="discounts/:id/edit" element={<DiscountFormPage />} />
+
+        {/* Phase 8 – Invoices (Staff Full Access) */}
+        <Route path="invoices" element={<InvoiceListPage />} />
+        <Route path="invoices/:id" element={<InvoiceDetailPage />} />
 
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>

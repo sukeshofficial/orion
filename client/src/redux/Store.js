@@ -7,6 +7,9 @@ import taxReducer from "./Slices/taxSlice";
 import planReducer from "./Slices/planSlice";
 import quotationTemplateReducer from "./Slices/quotationTemplateSlice";
 import quotationReducer from "./Slices/quotationSlice";
+import subscriptionReducer from "./Slices/subscriptionSlice";
+import discountReducer from "./Slices/discountSlice";
+import invoiceReducer from "./Slices/invoiceSlice";
 
 const store = configureStore({
   reducer: {
@@ -19,6 +22,9 @@ const store = configureStore({
     plan: planReducer,
     quotationTemplate: quotationTemplateReducer,
     quotation: quotationReducer,
+    subscription: subscriptionReducer,
+    discount: discountReducer,
+    invoice: invoiceReducer,
   }
 })
 

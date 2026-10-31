@@ -8,6 +8,9 @@ import TaxListPage from "@/pages/taxes/TaxListPage"
 import PlanListPage from "@/pages/plans/PlanListPage"
 import QuotationListPage from "@/pages/quotations/QuotationListPage"
 import TemplateListPage from "@/pages/quotations/TemplateListPage"
+import SubscriptionListPage from "@/pages/subscriptions/SubscriptionListPage"
+import DiscountListPage from "@/pages/discounts/DiscountListPage"
+import InvoiceListPage from "@/pages/invoices/InvoiceListPage"
 import {
   Users,
   FileText,
@@ -84,6 +87,21 @@ export default function DashboardPage({ currentRole }) {
   }
   if (activeTab === "quotation-templates") {
     return <TemplateListPage />
+  }
+
+  // Phase 6: Subscriptions tab
+  if (activeTab === "subscriptions") {
+    return <SubscriptionListPage />
+  }
+
+  // Phase 7: Discounts tab
+  if (activeTab === "discounts") {
+    return <DiscountListPage />
+  }
+
+  // Phase 8: Invoices tab
+  if (activeTab === "invoices") {
+    return <InvoiceListPage />
   }
 
   if (activeTab && TAB_MODULES[activeTab]) {
