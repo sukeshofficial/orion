@@ -1,7 +1,7 @@
 // src/pages/invoices/InvoiceListPage.jsx
 import * as React from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { useNavigate, useLocation } from "react-router-dom"
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import {
   fetchInvoices,
   fetchInvoiceStats,
@@ -290,6 +290,7 @@ export default function InvoiceListPage() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const { invoices, loading, stats, pagination } = useSelector((s) => s.invoice)
 
@@ -306,6 +307,15 @@ export default function InvoiceListPage() {
   const [confirmTarget, setConfirmTarget] = React.useState(null)
   const [cancelTarget, setCancelTarget] = React.useState(null)
   const [sendTarget, setSendTarget] = React.useState(null)
+
+  // Auto-open generate modal if requested via query or navigation
+  React.useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      setShowGenerateModal(true)
+      searchParams.delete("create")
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   // Derive base path
   const basePath = location.pathname.replace(/\/invoices.*/, "")
@@ -388,7 +398,7 @@ export default function InvoiceListPage() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(`${basePath}/invoices/create`)}
+              onClick={() => setShowGenerateModal(true)}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#2563EB] text-white text-sm font-medium hover:bg-blue-700 transition"
             >
               <Plus className="size-4" />
