@@ -10,6 +10,9 @@ import quotationReducer from "./Slices/quotationSlice";
 import subscriptionReducer from "./Slices/subscriptionSlice";
 import discountReducer from "./Slices/discountSlice";
 import invoiceReducer from "./Slices/invoiceSlice";
+import paymentReducer from "./Slices/paymentSlice";
+import analyticsReducer from "./Slices/analyticsSlice";
+import customerPortalReducer from "./Slices/customerPortalSlice";
 
 const store = configureStore({
   reducer: {
@@ -25,6 +28,9 @@ const store = configureStore({
     subscription: subscriptionReducer,
     discount: discountReducer,
     invoice: invoiceReducer,
+    payment: paymentReducer,
+    analytics: analyticsReducer,
+    portal: customerPortalReducer,
   }
 })
 

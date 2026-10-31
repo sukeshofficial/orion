@@ -52,7 +52,7 @@ export const ADMIN_NAV_SECTIONS = [
     title: "BILLING",
     items: [
       { name: "Invoices", href: "/admin/invoices", icon: ReceiptText },
-      { name: "Payments", href: "/admin/dashboard?tab=payments", icon: CreditCard },
+      { name: "Payments", href: "/admin/payments", icon: CreditCard },
       { name: "Discounts", href: "/admin/discounts", icon: Percent },
     ],
   },
@@ -66,7 +66,7 @@ export const ADMIN_NAV_SECTIONS = [
   {
     title: "REPORTS",
     items: [
-      { name: "Financial Analytics", href: "/admin/dashboard?tab=analytics", icon: TrendingUp },
+      { name: "Financial Analytics", href: "/admin/analytics", icon: TrendingUp },
     ],
   },
 ]
@@ -103,7 +103,7 @@ export const STAFF_NAV_SECTIONS = [
     title: "BILLING",
     items: [
       { name: "Invoices", href: "/staff/invoices", icon: ReceiptText },
-      { name: "Payments", href: "/staff/dashboard?tab=payments", icon: CreditCard },
+      { name: "Payments", href: "/staff/payments", icon: CreditCard },
       { name: "Discounts", href: "/staff/discounts", icon: Percent },
     ],
   },
