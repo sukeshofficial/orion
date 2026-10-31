@@ -1,8 +1,5 @@
 import * as React from "react"
 import {
-  Monitor,
-  FileSpreadsheet,
-  Layers,
   Sparkles,
   Shield,
   Briefcase,
@@ -13,7 +10,7 @@ import {
  * WorkspacePlaceholder renders the neutral, polished Phase 0 foundation workspace
  * faithfully reflecting Image 1 wireframe layouts for Admin, Staff, and Customer shells.
  */
-export default function WorkspacePlaceholder({ currentRole = "admin", onSelectRole }) {
+export default function WorkspacePlaceholder({ currentRole = "admin" }) {
   // Role-specific titles & descriptions
   const contentMap = {
     admin: {
@@ -216,124 +213,6 @@ export default function WorkspacePlaceholder({ currentRole = "admin", onSelectRo
           </div>
         </div>
       )}
-
-      {/* Role Switcher Section (matching the 3 cards at the bottom of Reference Image 1) */}
-      <div className="pt-6 border-t border-border/80">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              ORION Phase 0 Layout Switcher
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Directly preview all three role layouts specified in Phase 0.
-            </p>
-          </div>
-          <span className="text-[11px] font-medium text-[#668CFF] bg-[#668CFF]/10 px-2.5 py-1 rounded-full border border-[#668CFF]/20">
-            Interactive Preview
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Admin Application Card */}
-          <div
-            onClick={() => onSelectRole?.("admin")}
-            className={`group rounded-2xl border p-5 transition-all cursor-pointer relative ${
-              currentRole === "admin"
-                ? "border-[#668CFF] bg-[#668CFF]/[0.03] dark:bg-[#668CFF]/10 shadow-sm ring-1 ring-[#668CFF]"
-                : "border-border/80 bg-card hover:border-[#668CFF]/40"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-[#EEF3FF] dark:bg-[#111827] flex items-center justify-center text-[#668CFF]">
-                  <Monitor className="size-4" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Admin Application
-                </h3>
-              </div>
-              <span
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
-                  currentRole === "admin"
-                    ? "bg-[#668CFF] text-white"
-                    : "bg-[#668CFF]/10 text-[#668CFF]"
-                }`}
-              >
-                Default View
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Full sidebar navigation with all modules. Expanded by default with collapse support for icon-only mode.
-            </p>
-          </div>
-
-          {/* Internal Staff Application Card */}
-          <div
-            onClick={() => onSelectRole?.("staff")}
-            className={`group rounded-2xl border p-5 transition-all cursor-pointer relative ${
-              currentRole === "staff"
-                ? "border-[#668CFF] bg-[#668CFF]/[0.03] dark:bg-[#668CFF]/10 shadow-sm ring-1 ring-[#668CFF]"
-                : "border-border/80 bg-card hover:border-[#668CFF]/40"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-[#EEF3FF] dark:bg-[#111827] flex items-center justify-center text-[#668CFF]">
-                  <FileSpreadsheet className="size-4" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Internal Staff Application
-                </h3>
-              </div>
-              <span
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
-                  currentRole === "staff"
-                    ? "bg-[#668CFF] text-white"
-                    : "bg-[#668CFF]/10 text-[#668CFF]"
-                }`}
-              >
-                Compact View
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Compact sidebar by default with essential modules. Expandable when required.
-            </p>
-          </div>
-
-          {/* Customer Application Card */}
-          <div
-            onClick={() => onSelectRole?.("customer")}
-            className={`group rounded-2xl border p-5 transition-all cursor-pointer relative ${
-              currentRole === "customer"
-                ? "border-[#668CFF] bg-[#668CFF]/[0.03] dark:bg-[#668CFF]/10 shadow-sm ring-1 ring-[#668CFF]"
-                : "border-border/80 bg-card hover:border-[#668CFF]/40"
-            }`}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-[#EEF3FF] dark:bg-[#111827] flex items-center justify-center text-[#668CFF]">
-                  <Layers className="size-4" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Customer Application
-                </h3>
-              </div>
-              <span
-                className={`text-[10px] font-semibold px-2.5 py-1 rounded-full transition ${
-                  currentRole === "customer"
-                    ? "bg-[#668CFF] text-white"
-                    : "bg-[#668CFF]/10 text-[#668CFF]"
-                }`}
-              >
-                Top Navigation
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Clean top navigation without sidebar. Focused on customer self-service and account management.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
