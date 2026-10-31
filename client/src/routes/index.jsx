@@ -58,6 +58,9 @@ import PaymentDetailPage from "@/pages/payments/PaymentDetailPage"
 // ── Phase 10 ─ Analytics & Financial Reporting ────────────────────────────────
 import AdminAnalyticsDashboard from "@/pages/analytics/AdminAnalyticsDashboard"
 
+// ── Staff Administration ──────────────────────────────────────────────────────
+import StaffListPage from "@/pages/admin/StaffListPage"
+
 // ── Phase 11 ─ Customer Portal Pages ──────────────────────────────────────────
 import CustomerDashboard from "@/pages/portal/CustomerDashboard"
 import MySubscriptions from "@/pages/portal/MySubscriptions"
@@ -215,6 +218,9 @@ export default function AppRoutes() {
 
         {/* Phase 10 – Analytics & Financial Reporting */}
         <Route path="analytics" element={<AdminAnalyticsDashboard />} />
+
+        {/* Staff Administration */}
+        <Route path="staff" element={<StaffListPage />} />
 
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>

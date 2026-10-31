@@ -13,6 +13,7 @@ import invoiceReducer from "./Slices/invoiceSlice";
 import paymentReducer from "./Slices/paymentSlice";
 import analyticsReducer from "./Slices/analyticsSlice";
 import customerPortalReducer from "./Slices/customerPortalSlice";
+import staffReducer from "./Slices/staffSlice";
 
 const store = configureStore({
   reducer: {
@@ -31,6 +32,7 @@ const store = configureStore({
     payment: paymentReducer,
     analytics: analyticsReducer,
     portal: customerPortalReducer,
+    staff: staffReducer,
   }
 })
 
