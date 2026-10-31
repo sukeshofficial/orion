@@ -116,9 +116,11 @@ export const cancelInvoice = createAsyncThunk(
 
 export const sendInvoice = createAsyncThunk(
   "invoice/sendInvoice",
-  async ({ id, email }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      return await invService.sendInvoice(id, email);
+      const invoiceId = typeof payload === "string" ? payload : (payload.id || payload.invoiceId);
+      const email = typeof payload === "object" ? payload.email : undefined;
+      return await invService.sendInvoice(invoiceId, email);
     } catch (error) {
       return rejectWithValue(
         error?.response?.data?.message || error.message || "Failed to send invoice"
@@ -209,8 +211,16 @@ const invoiceSlice = createSlice({
       })
       .addCase(createInvoice.fulfilled, (state, action) => {
         state.actionLoading = false;
-        if (action.payload.invoice) {
-          state.invoices.unshift(action.payload.invoice);
+        const inv = action.payload?.invoice || action.payload;
+        if (inv && (inv._id || inv.id)) {
+          const id = inv._id || inv.id;
+          const exists = state.invoices.some((x) => (x._id || x.id) === id);
+          if (!exists) {
+            state.invoices.unshift(inv);
+            if (state.pagination) {
+              state.pagination.total = (state.pagination.total || 0) + 1;
+            }
+          }
         }
       })
       .addCase(createInvoice.rejected, (state, action) => {

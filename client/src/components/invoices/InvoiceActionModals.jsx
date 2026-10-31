@@ -79,7 +79,7 @@ export default function InvoiceActionModals({
     setSubmitting(true)
     try {
       const res = await dispatch(
-        sendInvoice({ invoiceId, email: recipientEmail || customerEmail })
+        sendInvoice({ id: invoiceId, email: recipientEmail || customerEmail })
       )
       if (!res.error) {
         onCloseSend()

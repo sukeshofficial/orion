@@ -10,7 +10,29 @@ const BASE = "/api/v1/invoices";
  * @returns {{ success: boolean, invoices: Array, pagination: Object }}
  */
 export async function fetchInvoices(params = {}) {
-  const { data } = await api.get(BASE, { params });
+  const cleanParams = {};
+  if (params.page) cleanParams.page = params.page;
+  if (params.limit) cleanParams.limit = params.limit;
+  if (params.search && params.search.trim()) cleanParams.search = params.search.trim();
+  if (params.customerId) cleanParams.customerId = params.customerId;
+  if (params.subscriptionId) cleanParams.subscriptionId = params.subscriptionId;
+  
+  if (params.status && params.status !== "all") {
+    // Backend enum INVOICE_STATUS uses capitalized values: Draft, Confirmed, Paid, Partially Paid, Cancelled, Overdue
+    const statusMap = {
+      draft: "Draft",
+      confirmed: "Confirmed",
+      paid: "Paid",
+      "partially paid": "Partially Paid",
+      partially_paid: "Partially Paid",
+      cancelled: "Cancelled",
+      overdue: "Overdue",
+    };
+    const sLower = params.status.toLowerCase();
+    cleanParams.status = statusMap[sLower] || params.status;
+  }
+
+  const { data } = await api.get(BASE, { params: cleanParams });
   return data;
 }
 

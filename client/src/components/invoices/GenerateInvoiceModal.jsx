@@ -429,6 +429,7 @@ export default function GenerateInvoiceModal({ isOpen, onClose, onSuccess }) {
 
   const [step, setStep] = React.useState(1)
   const [selectedId, setSelectedId] = React.useState(null)
+  const [errorMsg, setErrorMsg] = React.useState("")
 
   const selectedSub = React.useMemo(
     () => (subscriptions || []).find((s) => (s.id || s._id) === selectedId),
@@ -436,23 +437,35 @@ export default function GenerateInvoiceModal({ isOpen, onClose, onSuccess }) {
   )
 
   function handleNext() {
+    setErrorMsg("")
     if (step < 3) setStep((s) => s + 1)
   }
 
   function handleBack() {
+    setErrorMsg("")
     if (step > 1) setStep((s) => s - 1)
   }
 
   async function handleGenerate() {
     if (!selectedId) return
-    await dispatch(generateInvoice({ subscriptionId: selectedId }))
-    if (onSuccess) onSuccess()
-    onClose()
+    setErrorMsg("")
+    const res = await dispatch(generateInvoice({ subscriptionId: selectedId }))
+    if (!res.error) {
+      if (onSuccess) onSuccess(res.payload)
+      onClose()
+    } else {
+      setErrorMsg(
+        typeof res.payload === "string"
+          ? res.payload
+          : res.error?.message || "Failed to generate invoice."
+      )
+    }
   }
 
   function handleClose() {
     setStep(1)
     setSelectedId(null)
+    setErrorMsg("")
     onClose()
   }
 
@@ -488,6 +501,12 @@ export default function GenerateInvoiceModal({ isOpen, onClose, onSuccess }) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <Stepper currentStep={step} />
+
+          {errorMsg && (
+            <div className="mb-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 p-3 text-xs text-red-600 dark:text-red-400 font-medium">
+              {errorMsg}
+            </div>
+          )}
 
           {step === 1 && (
             <Step1
