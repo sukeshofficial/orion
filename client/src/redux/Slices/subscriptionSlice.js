@@ -17,12 +17,12 @@ export const fetchSubscriptionStats = createAsyncThunk(
       ]);
 
       return {
-        total: allRes.pagination?.total ?? 24,
-        active: activeRes.pagination?.total ?? 12,
-        paused: pausedRes.pagination?.total ?? 3,
-        closed: closedRes.pagination?.total ?? 4,
-        draft: draftRes.pagination?.total ?? 2,
-        expiringSoon: 3,
+        total: allRes.pagination?.total ?? 0,
+        active: activeRes.pagination?.total ?? 0,
+        paused: pausedRes.pagination?.total ?? 0,
+        closed: closedRes.pagination?.total ?? 0,
+        draft: draftRes.pagination?.total ?? 0,
+        expiringSoon: 0,
       };
     } catch (error) {
       return rejectWithValue(
@@ -176,12 +176,12 @@ const initialState = {
     totalPages: 1,
   },
   stats: {
-    total: 24,
-    active: 12,
-    paused: 3,
-    closed: 4,
-    draft: 2,
-    expiringSoon: 3,
+    total: 0,
+    active: 0,
+    paused: 0,
+    closed: 0,
+    draft: 0,
+    expiringSoon: 0,
   },
   filters: {
     search: "",

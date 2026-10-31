@@ -27,12 +27,12 @@ export const fetchInvoiceStats = createAsyncThunk(
       });
 
       return {
-        total: list.length || 48,
-        draft: draft || 6,
-        confirmed: confirmed || 24,
-        paid: paid || 12,
-        overdue: overdue || 5,
-        cancelled: cancelled || 1,
+        total: res.pagination?.total ?? list.length,
+        draft,
+        confirmed,
+        paid,
+        overdue,
+        cancelled,
       };
     } catch (error) {
       return rejectWithValue(
@@ -136,12 +136,12 @@ const initialState = {
     totalPages: 1,
   },
   stats: {
-    total: 48,
-    draft: 6,
-    confirmed: 24,
-    paid: 12,
-    overdue: 5,
-    cancelled: 1,
+    total: 0,
+    draft: 0,
+    confirmed: 0,
+    paid: 0,
+    overdue: 0,
+    cancelled: 0,
   },
   filters: {
     search: "",

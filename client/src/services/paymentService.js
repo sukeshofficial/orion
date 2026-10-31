@@ -32,10 +32,14 @@ export async function fetchPaymentById(id) {
  * @returns {{ success: boolean, message: string, payment: Object, invoice: Object }}
  */
 export async function recordPayment(payload) {
+  const methodRaw = (payload.paymentMethod || payload.method || "").toLowerCase().replace(/[\s-]+/g, "_");
+  const validMethods = ["credit_card", "debit_card", "bank_transfer", "upi", "cash", "other"];
+  const paymentMethod = validMethods.includes(methodRaw) ? methodRaw : "bank_transfer";
+
   const body = {
     invoiceId: payload.invoiceId || payload.invoice?._id || payload.invoice?.id,
     amount: Number(payload.amount),
-    paymentMethod: payload.paymentMethod || payload.method || "Bank Transfer",
+    paymentMethod,
     notes: payload.notes || "",
     reference: payload.reference || payload.paymentReference,
     idempotencyKey: payload.idempotencyKey,
