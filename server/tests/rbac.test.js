@@ -553,3 +553,128 @@ describe("10. Role injection prevention", () => {
     assert.equal(res.body.success, false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 2 — Admin Bootstrap, Admin Access & Admin Safeguards
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("11. Phase 2 Admin Route Foundation & Security", () => {
+  let adminUser, adminToken, staffUser, staffToken, customerUser, customerToken;
+
+  before(async () => {
+    adminUser = await createUser({
+      name: "Phase 2 Admin",
+      email: `phase2-admin-${ts()}@rbac.test`,
+      role: USER_ROLES.ADMIN,
+      permissions: ["*"],
+    });
+    createdEmails.push(adminUser.email);
+    adminToken = generateToken(adminUser);
+
+    staffUser = await createUser({
+      name: "Phase 2 Staff",
+      email: `phase2-staff-${ts()}@rbac.test`,
+      role: USER_ROLES.INTERNAL_USER,
+      permissions: [],
+    });
+    createdEmails.push(staffUser.email);
+    staffToken = generateToken(staffUser);
+
+    customerUser = await createUser({
+      name: "Phase 2 Customer",
+      email: `phase2-cust-${ts()}@rbac.test`,
+      role: USER_ROLES.USER,
+      permissions: [],
+    });
+    createdEmails.push(customerUser.email);
+    customerToken = generateToken(customerUser);
+  });
+
+  it("Admin-only routes reject customer with 403", async () => {
+    const res = await request
+      .get("/api/v1/admin/users")
+      .set("Authorization", `Bearer ${customerToken}`);
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+  });
+
+  it("Admin-only routes reject staff with 403", async () => {
+    const res = await request
+      .get("/api/v1/admin/users")
+      .set("Authorization", `Bearer ${staffToken}`);
+
+    assert.equal(res.status, 403);
+    assert.equal(res.body.success, false);
+  });
+
+  it("Admin-only routes succeed for admin and never expose sensitive password hashes/tokens", async () => {
+    const res = await request
+      .get("/api/v1/admin/users")
+      .set("Authorization", `Bearer ${adminToken}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(Array.isArray(res.body.users));
+
+    // Verify sensitive fields are strictly omitted from account listings
+    for (const u of res.body.users) {
+      assert.equal(u.password, undefined);
+      assert.equal(u.passwordResetToken, undefined);
+      assert.equal(u.passwordResetExpires, undefined);
+      assert.equal(u.emailVerificationToken, undefined);
+    }
+  });
+
+  it("Public registration always forces 'user' role and rejects privilege elevation", async () => {
+    const candidateEmail = `pub-reg-${ts()}@rbac.test`;
+    createdEmails.push(candidateEmail);
+
+    const res = await request.post("/api/v1/auth/register").send({
+      name: "Infiltrator",
+      email: candidateEmail,
+      phone: "+1 555-4321",
+      password: "Password123!",
+      confirmPassword: "Password123!",
+      role: "admin", // attempt privilege elevation
+      permissions: ["*"],
+    });
+
+    assert.equal(res.status, 201);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.user.role, USER_ROLES.USER);
+    assert.deepEqual(res.body.user.permissions, []);
+  });
+
+  it("Staff/customer cannot promote themselves to admin via profile update", async () => {
+    const res = await request
+      .patch("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ role: "admin", permissions: ["*"] });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.user.role, USER_ROLES.INTERNAL_USER);
+    assert.deepEqual(res.body.user.permissions, []);
+  });
+
+  it("Prevents deactivation of the last active administrator", async () => {
+    // Disable any other active test admins first to ensure adminUser is the sole active admin
+    await User.updateMany(
+      {
+        _id: { $ne: adminUser._id },
+        role: { $in: [USER_ROLES.ADMIN, "admin"] },
+        status: USER_STATUS.ACTIVE,
+      },
+      { $set: { status: USER_STATUS.DISABLED } }
+    );
+
+    const res = await request
+      .patch(`/api/v1/admin/users/${adminUser._id}/status`)
+      .set("Authorization", `Bearer ${adminToken}`)
+      .send({ status: "disabled" });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+    assert.match(res.body.message, /last active administrator/i);
+  });
+});

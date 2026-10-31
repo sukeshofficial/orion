@@ -140,6 +140,7 @@ export const updateInternalUserPermissions = async (userId, permissions = []) =>
 
 /**
  * Update user status (e.g. active / disabled).
+ * Prevents accidental deactivation of the last active administrator.
  */
 export const updateUserStatus = async (userId, status) => {
   if (!Object.values(USER_STATUS).includes(status)) {
@@ -153,6 +154,20 @@ export const updateUserStatus = async (userId, status) => {
     const error = new Error("User not found");
     error.statusCode = 404;
     throw error;
+  }
+
+  // Prevent disabling the last active administrator
+  if (status === USER_STATUS.DISABLED && normalizeRole(user.role) === USER_ROLES.ADMIN) {
+    const activeAdminCount = await User.countDocuments({
+      role: { $in: [USER_ROLES.ADMIN, "admin"] },
+      status: USER_STATUS.ACTIVE,
+    });
+
+    if (activeAdminCount <= 1) {
+      const error = new Error("Cannot deactivate the last active administrator account");
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   user.status = status;

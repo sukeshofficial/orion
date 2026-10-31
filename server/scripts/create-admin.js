@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import mongoose from "mongoose";
 import connectDB from "../src/config/db.js";
 import User, { USER_STATUS } from "../src/models/user.model.js";
 import { USER_ROLES } from "../src/config/roles.js";
@@ -16,10 +17,20 @@ const sanitizeLogValue = (value) =>
  * Admin Bootstrap Script
  * Creates the initial administrator safely through controlled provisioning.
  *
+ * Requirements:
+ * - Read initial admin credentials from environment variables (or CLI args).
+ * - Validate all required environment variables / inputs.
+ * - Hash password using existing authentication password utility (User model bcrypt pre-save hook).
+ * - Create account with admin role and wildcard permissions.
+ * - Prevent duplicate administrator creation and exit safely if administrator already exists.
+ * - Never hardcode production credentials.
+ * - Do not expose passwords or password hashes in logs.
+ * - Cleanly disconnect database connection upon completion.
+ *
  * Usage:
- *   node scripts/create-admin.js <email> <password> [name] [phone]
+ *   node scripts/create-admin.js [email] [password] [name] [phone]
  * Or via environment variables:
- *   ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=StrongPassword123! ADMIN_NAME="Root Admin" node scripts/create-admin.js
+ *   ADMIN_EMAIL=admin@example.com ADMIN_PASSWORD=StrongPassword123! ADMIN_NAME="Root Admin" npm run seed:admin
  */
 const bootstrapAdmin = async () => {
   const args = process.argv.slice(2);
@@ -29,10 +40,18 @@ const bootstrapAdmin = async () => {
   const name = (args[2] || process.env.ADMIN_NAME || "Administrator").trim();
   const phone = (args[3] || process.env.ADMIN_PHONE || "+1 555-0100").trim();
 
+  // Validate required parameters
   if (!email || !password) {
     console.error("Error: Admin email and password are required.");
+    console.error("Please configure ADMIN_EMAIL and ADMIN_PASSWORD in environment variables, or pass via CLI:");
     console.error("Usage: node scripts/create-admin.js <email> <password> [name] [phone]");
-    console.error("Or set ADMIN_EMAIL and ADMIN_PASSWORD in environment variables.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  if (!emailRegex.test(email)) {
+    console.error("Error: A valid email format is required for ADMIN_EMAIL.");
     process.exitCode = 1;
     return;
   }
@@ -72,7 +91,7 @@ const bootstrapAdmin = async () => {
       name,
       email: normalizedEmail,
       phone,
-      password, // Password hashed by pre-save hook
+      password, // Password hashed by User model bcrypt pre-save hook
       role: USER_ROLES.ADMIN,
       status: USER_STATUS.ACTIVE,
       permissions: ["*"],
@@ -96,6 +115,10 @@ const bootstrapAdmin = async () => {
       sanitizeLogValue(error?.message || "An unexpected error occurred")
     );
     process.exitCode = 1;
+  } finally {
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
   }
 };
 
