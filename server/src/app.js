@@ -14,6 +14,10 @@ import customerRoutes from "./routes/customer.routes.js";
 import productRoutes from "./routes/product.routes.js";
 import taxRoutes from "./routes/tax.routes.js";
 import planRoutes from "./routes/plan.routes.js";
+import quotationTemplateRoutes from "./routes/quotationTemplate.routes.js";
+import quotationRoutes from "./routes/quotation.routes.js";
+import subscriptionRoutes from "./routes/subscription.routes.js";
+import discountRoutes from "./routes/discount.routes.js";
 
 const app = express();
 
@@ -93,8 +97,10 @@ app.use("/api/v1/customers", customerRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/taxes", taxRoutes);
 app.use("/api/v1/plans", planRoutes);
-
-
+app.use("/api/v1/quotation-templates", quotationTemplateRoutes);
+app.use("/api/v1/quotations", quotationRoutes);
+app.use("/api/v1/subscriptions", subscriptionRoutes);
+app.use("/api/v1/discounts", discountRoutes);
 
 // Handle unknown routes
 app.use((req, res) => {

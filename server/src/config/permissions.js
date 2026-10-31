@@ -43,6 +43,11 @@ export const PERMISSIONS = {
   SUBSCRIPTION_CREATE: "subscription.create",
   SUBSCRIPTION_UPDATE: "subscription.update",
 
+  // ── Discount management ───────────────────────────────────────────────────
+  DISCOUNT_READ:   "discount.read",
+  DISCOUNT_CREATE: "discount.create",
+  DISCOUNT_UPDATE: "discount.update",
+
   // ── Invoice management ────────────────────────────────────────────────────
   INVOICE_READ:   "invoice.read",
   INVOICE_CREATE: "invoice.create",
@@ -123,6 +128,7 @@ const INTERNAL_USER_DEFAULT_PERMISSIONS = [
   PERMISSIONS.TAX_READ,
   PERMISSIONS.QUOTATION_READ,
   PERMISSIONS.SUBSCRIPTION_READ,
+  PERMISSIONS.DISCOUNT_READ,
   PERMISSIONS.INVOICE_READ,
   PERMISSIONS.PAYMENT_READ,
   PERMISSIONS.ANALYTICS_READ,
