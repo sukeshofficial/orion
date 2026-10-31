@@ -15,6 +15,28 @@ import { useAuth } from "@/context/AuthContext"
 import { getDefaultDashboard, getRoleProfilePath } from "@/lib/roles"
 import { Loader2 } from "lucide-react"
 
+// ── Phase 2 — Customer Management Pages ──────────────────────────────────────
+import CustomerListPage from "@/pages/customers/CustomerListPage"
+import CustomerFormPage from "@/pages/customers/CustomerFormPage"
+import CustomerDetailPage from "@/pages/customers/CustomerDetailPage"
+
+// ── Phase 3 — Product & Tax Management Pages ──────────────────────────────────
+import ProductListPage from "@/pages/products/ProductListPage"
+import ProductFormPage from "@/pages/products/ProductFormPage"
+import TaxListPage from "@/pages/taxes/TaxListPage"
+
+// ── Phase 4 — Subscription Plan Management Pages ──────────────────────────────
+import PlanListPage from "@/pages/plans/PlanListPage"
+import PlanFormPage from "@/pages/plans/PlanFormPage"
+import PlanDetailPage from "@/pages/plans/PlanDetailPage"
+
+// ── Phase 5 — Quotation & Template Management Pages ───────────────────────────
+import TemplateListPage from "@/pages/quotations/TemplateListPage"
+import TemplateFormPage from "@/pages/quotations/TemplateFormPage"
+import QuotationListPage from "@/pages/quotations/QuotationListPage"
+import QuotationWizardPage from "@/pages/quotations/QuotationWizardPage"
+import QuotationDetailPage from "@/pages/quotations/QuotationDetailPage"
+
 /**
  * DashboardRedirect
  * Redirects authenticated users from legacy /dashboard to their role-specific dashboard
@@ -114,6 +136,34 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="profile" element={<UserProfilePage />} />
+
+        {/* Phase 2 — Customer Management */}
+        <Route path="customers" element={<CustomerListPage />} />
+        <Route path="customers/new" element={<CustomerFormPage />} />
+        <Route path="customers/:id" element={<CustomerDetailPage />} />
+        <Route path="customers/:id/edit" element={<CustomerFormPage />} />
+
+        {/* Phase 3 — Product & Tax Management */}
+        <Route path="products" element={<ProductListPage />} />
+        <Route path="products/new" element={<ProductFormPage />} />
+        <Route path="products/:id/edit" element={<ProductFormPage />} />
+        <Route path="taxes" element={<TaxListPage />} />
+
+        {/* Phase 4 — Subscription Plan Management */}
+        <Route path="plans" element={<PlanListPage />} />
+        <Route path="plans/new" element={<PlanFormPage />} />
+        <Route path="plans/:id" element={<PlanDetailPage />} />
+        <Route path="plans/:id/edit" element={<PlanFormPage />} />
+
+        {/* Phase 5 — Quotation Templates & Quotations */}
+        <Route path="quotation-templates" element={<TemplateListPage />} />
+        <Route path="quotation-templates/new" element={<TemplateFormPage />} />
+        <Route path="quotation-templates/:id/edit" element={<TemplateFormPage />} />
+        <Route path="quotations" element={<QuotationListPage />} />
+        <Route path="quotations/new" element={<QuotationWizardPage />} />
+        <Route path="quotations/:id" element={<QuotationDetailPage />} />
+        <Route path="quotations/:id/edit" element={<QuotationWizardPage />} />
+
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 
@@ -129,6 +179,31 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="profile" element={<UserProfilePage />} />
+
+        {/* Phase 2 — Customer Management */}
+        <Route path="customers" element={<CustomerListPage />} />
+        <Route path="customers/new" element={<CustomerFormPage />} />
+        <Route path="customers/:id" element={<CustomerDetailPage />} />
+        <Route path="customers/:id/edit" element={<CustomerFormPage />} />
+
+        {/* Phase 3 — Products & Taxes (Staff Read/Catalog) */}
+        <Route path="products" element={<ProductListPage />} />
+        <Route path="products/:id/edit" element={<ProductFormPage />} />
+        <Route path="taxes" element={<TaxListPage />} />
+
+        {/* Phase 4 — Subscription Plans (Staff Read/View) */}
+        <Route path="plans" element={<PlanListPage />} />
+        <Route path="plans/:id" element={<PlanDetailPage />} />
+
+        {/* Phase 5 — Quotations & Templates (Primary Staff Workflow) */}
+        <Route path="quotation-templates" element={<TemplateListPage />} />
+        <Route path="quotation-templates/new" element={<TemplateFormPage />} />
+        <Route path="quotation-templates/:id/edit" element={<TemplateFormPage />} />
+        <Route path="quotations" element={<QuotationListPage />} />
+        <Route path="quotations/new" element={<QuotationWizardPage />} />
+        <Route path="quotations/:id" element={<QuotationDetailPage />} />
+        <Route path="quotations/:id/edit" element={<QuotationWizardPage />} />
+
         <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
 

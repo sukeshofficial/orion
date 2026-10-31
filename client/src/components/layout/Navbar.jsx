@@ -182,7 +182,7 @@ export default function Navbar({
   // Quick navigation modules
   const searchableModules = [
     { name: "Dashboard", category: "Overview", href: `${rolePrefix}/dashboard` },
-    { name: "Customers", category: "Sales", href: `${rolePrefix}/dashboard?tab=customers` },
+    { name: "Customers", category: "Sales", href: `${rolePrefix}/customers` },
     { name: "Quotations", category: "Sales", href: `${rolePrefix}/dashboard?tab=quotations` },
     { name: "Subscriptions", category: "Subscriptions", href: `${rolePrefix}/dashboard?tab=subscriptions` },
     { name: "Plans", category: "Subscriptions", href: `${rolePrefix}/dashboard?tab=plans` },

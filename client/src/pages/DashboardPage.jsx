@@ -2,6 +2,12 @@ import * as React from "react"
 import { useSearchParams, useLocation } from "react-router-dom"
 import WorkspacePlaceholder from "@/components/layout/WorkspacePlaceholder"
 import { useAuth } from "@/context/AuthContext"
+import CustomerListPage from "@/pages/customers/CustomerListPage"
+import ProductListPage from "@/pages/products/ProductListPage"
+import TaxListPage from "@/pages/taxes/TaxListPage"
+import PlanListPage from "@/pages/plans/PlanListPage"
+import QuotationListPage from "@/pages/quotations/QuotationListPage"
+import TemplateListPage from "@/pages/quotations/TemplateListPage"
 import {
   Users,
   FileText,
@@ -20,7 +26,6 @@ import {
 } from "lucide-react"
 
 const TAB_MODULES = {
-  customers: { title: "Customers", subtitle: "Customer records, profiles, and relationship management", icon: Users },
   quotations: { title: "Quotations", subtitle: "Sales quotation management, pricing, and approvals", icon: FileText },
   subscriptions: { title: "Subscriptions", subtitle: "Active, paused, and recurring subscription lifecycles", icon: CalendarDays },
   plans: { title: "Plans", subtitle: "Tier configurations, billing intervals, and entitlements", icon: Boxes },
@@ -54,6 +59,32 @@ export default function DashboardPage({ currentRole }) {
       : normalizedRole === "internal_user"
       ? "staff"
       : "customer")
+
+  // Phase 2: Customers tab renders CustomerListPage
+  if (activeTab === "customers") {
+    return <CustomerListPage />
+  }
+
+  // Phase 3: Products & Taxes tabs
+  if (activeTab === "products") {
+    return <ProductListPage />
+  }
+  if (activeTab === "taxes") {
+    return <TaxListPage />
+  }
+
+  // Phase 4: Plans tab
+  if (activeTab === "plans") {
+    return <PlanListPage />
+  }
+
+  // Phase 5: Quotations & Quotation Templates tabs
+  if (activeTab === "quotations") {
+    return <QuotationListPage />
+  }
+  if (activeTab === "quotation-templates") {
+    return <TemplateListPage />
+  }
 
   if (activeTab && TAB_MODULES[activeTab]) {
     const info = TAB_MODULES[activeTab]
@@ -93,5 +124,9 @@ export default function DashboardPage({ currentRole }) {
     )
   }
 
-  return <WorkspacePlaceholder currentRole={role} />
+  return (
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-8 animate-in fade-in duration-200">
+      <WorkspacePlaceholder role={role} />
+    </div>
+  )
 }
