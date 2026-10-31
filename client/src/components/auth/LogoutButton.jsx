@@ -1,5 +1,6 @@
 import * as React from "react"
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { LogOut, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 
@@ -10,12 +11,16 @@ import { useAuth } from "@/context/AuthContext"
  */
 export function LogoutButton({ className = "", variant = "default" }) {
   const { logoutUser } = useAuth()
+  const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
 
   const handleLogout = async () => {
     try {
       setLoggingOut(true)
       await logoutUser()
+      navigate("/login", { replace: true })
+    } catch {
+      navigate("/login", { replace: true })
     } finally {
       setLoggingOut(false)
     }

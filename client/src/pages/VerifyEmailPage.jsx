@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { confirmEmailVerification } from "@/services/authService"
 import { useAuth } from "@/context/AuthContext"
+import { getDefaultDashboard, getRoleProfilePath } from "@/lib/roles"
 import { ShieldCheck, AlertCircle, CheckCircle2, Loader2, ArrowRight, Mail } from "lucide-react"
 
 export default function VerifyEmailPage() {
@@ -115,7 +116,7 @@ export default function VerifyEmailPage() {
 
           {status === "success" && (
             <Link
-              to="/dashboard"
+              to={user ? getDefaultDashboard(user.role) : "/portal/dashboard"}
               className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition shadow-sm"
             >
               <span>Continue to Dashboard</span>
@@ -126,7 +127,7 @@ export default function VerifyEmailPage() {
           {status === "error" && (
             <div className="space-y-2">
               <Link
-                to="/profile"
+                to={user ? getRoleProfilePath(user.role) : "/login"}
                 className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition shadow-sm"
               >
                 <span>Go to Profile to Resend</span>

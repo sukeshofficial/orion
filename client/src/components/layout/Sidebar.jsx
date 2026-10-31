@@ -24,49 +24,49 @@ export const ADMIN_NAV_SECTIONS = [
   {
     title: "OVERVIEW",
     items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     ],
   },
   {
     title: "SALES",
     items: [
-      { name: "Customers", href: "/dashboard?tab=customers", icon: Users },
-      { name: "Quotations", href: "/dashboard?tab=quotations", icon: FileText },
+      { name: "Customers", href: "/admin/dashboard?tab=customers", icon: Users },
+      { name: "Quotations", href: "/admin/dashboard?tab=quotations", icon: FileText },
     ],
   },
   {
     title: "SUBSCRIPTIONS",
     items: [
-      { name: "Subscriptions", href: "/dashboard?tab=subscriptions", icon: CalendarDays },
-      { name: "Plans", href: "/dashboard?tab=plans", icon: Boxes },
+      { name: "Subscriptions", href: "/admin/dashboard?tab=subscriptions", icon: CalendarDays },
+      { name: "Plans", href: "/admin/dashboard?tab=plans", icon: Boxes },
     ],
   },
   {
     title: "CATALOG",
     items: [
-      { name: "Products", href: "/dashboard?tab=products", icon: PackageOpen },
-      { name: "Taxes", href: "/dashboard?tab=taxes", icon: Receipt },
+      { name: "Products", href: "/admin/dashboard?tab=products", icon: PackageOpen },
+      { name: "Taxes", href: "/admin/dashboard?tab=taxes", icon: Receipt },
     ],
   },
   {
     title: "BILLING",
     items: [
-      { name: "Invoices", href: "/dashboard?tab=invoices", icon: ReceiptText },
-      { name: "Payments", href: "/dashboard?tab=payments", icon: CreditCard },
-      { name: "Discounts", href: "/dashboard?tab=discounts", icon: Percent },
+      { name: "Invoices", href: "/admin/dashboard?tab=invoices", icon: ReceiptText },
+      { name: "Payments", href: "/admin/dashboard?tab=payments", icon: CreditCard },
+      { name: "Discounts", href: "/admin/dashboard?tab=discounts", icon: Percent },
     ],
   },
   {
     title: "ADMINISTRATION",
     items: [
-      { name: "Staff", href: "/dashboard?tab=staff", icon: UserCog },
-      { name: "Settings", href: "/dashboard?tab=settings", icon: Settings },
+      { name: "Staff", href: "/admin/dashboard?tab=staff", icon: UserCog },
+      { name: "Settings", href: "/admin/dashboard?tab=settings", icon: Settings },
     ],
   },
   {
     title: "REPORTS",
     items: [
-      { name: "Financial Analytics", href: "/dashboard?tab=analytics", icon: TrendingUp },
+      { name: "Financial Analytics", href: "/admin/dashboard?tab=analytics", icon: TrendingUp },
     ],
   },
 ]
@@ -75,34 +75,34 @@ export const STAFF_NAV_SECTIONS = [
   {
     title: "OVERVIEW",
     items: [
-      { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { name: "Dashboard", href: "/staff/dashboard", icon: LayoutDashboard },
     ],
   },
   {
     title: "SALES",
     items: [
-      { name: "Customers", href: "/dashboard?tab=customers", icon: Users },
-      { name: "Quotations", href: "/dashboard?tab=quotations", icon: FileText },
+      { name: "Customers", href: "/staff/dashboard?tab=customers", icon: Users },
+      { name: "Quotations", href: "/staff/dashboard?tab=quotations", icon: FileText },
     ],
   },
   {
     title: "SUBSCRIPTIONS",
     items: [
-      { name: "Subscriptions", href: "/dashboard?tab=subscriptions", icon: CalendarDays },
-      { name: "Plans", href: "/dashboard?tab=plans", icon: Boxes },
+      { name: "Subscriptions", href: "/staff/dashboard?tab=subscriptions", icon: CalendarDays },
+      { name: "Plans", href: "/staff/dashboard?tab=plans", icon: Boxes },
     ],
   },
   {
     title: "BILLING",
     items: [
-      { name: "Invoices", href: "/dashboard?tab=invoices", icon: ReceiptText },
-      { name: "Payments", href: "/dashboard?tab=payments", icon: CreditCard },
+      { name: "Invoices", href: "/staff/dashboard?tab=invoices", icon: ReceiptText },
+      { name: "Payments", href: "/staff/dashboard?tab=payments", icon: CreditCard },
     ],
   },
   {
     title: "ADMINISTRATION",
     items: [
-      { name: "Settings", href: "/dashboard?tab=settings", icon: Settings },
+      { name: "Settings", href: "/staff/dashboard?tab=settings", icon: Settings },
     ],
   },
 ]
@@ -120,11 +120,14 @@ export default function Sidebar({
   const sections = role === "staff" ? STAFF_NAV_SECTIONS : ADMIN_NAV_SECTIONS
 
   const isItemActive = (href) => {
-    if (href === "/dashboard") {
-      return location.pathname === "/dashboard" && !currentTab
+    const [itemPath, itemQuery] = href.split("?")
+    const itemTab = new URLSearchParams(itemQuery || "").get("tab")
+
+    if (location.pathname === itemPath) {
+      if (!itemTab && !currentTab) return true
+      return currentTab === itemTab
     }
-    const itemTab = new URLSearchParams(href.split("?")[1] || "").get("tab")
-    return currentTab === itemTab
+    return false
   }
 
   const sidebarContent = (
@@ -277,4 +280,3 @@ export default function Sidebar({
     </>
   )
 }
-
